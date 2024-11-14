@@ -1,5 +1,10 @@
 This script highlights new comments since your last visit, and collapses all comments that are older.
-It also adds a button to load all comments hidden behind a "load more comments" or "" link. This can take some time, so an alert popup will be shown when it's done.
+It also adds a button to load all comments hidden behind a "load more comments" or "[show replies]"
+link. This can take some time, so an alert popup will be shown when it's done. This script does not
+follow "continue this thread" links since those actually lead to a new page. However, if you follow
+one of those links yourself (or go to a comment permalink), this script will recognize comments on
+that page.
+
 This script only works on Old Reddit.
 
 [Install/Update](https://raw.githubusercontent.com/Yay295/Reddit-Highlight-Newest-Comments/refs/heads/main/Reddit%20Highlight%20Newest%20Comments.user.js)
