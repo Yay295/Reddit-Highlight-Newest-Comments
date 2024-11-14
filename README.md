@@ -12,6 +12,8 @@ This script only works on Old Reddit.
 Based on https://greasyfork.org/en/scripts/1868-reddit-highlight-newest-comments v1.5.7 by [JonnyRobbie](https://github.com/jonnyrobbie).
 
 ## Changelog
+- 1.11.0
+  - Store data in the script's storage rather than `localStorage`.
 - 1.10.1
   - Mark all events as "passive".
 - 1.10.0

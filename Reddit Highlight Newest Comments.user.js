@@ -4,8 +4,11 @@
 // @namespace     https://greasyfork.org/users/98-jonnyrobbie
 // @author        JonnyRobbie and Yay295
 // @include       /https?:\/\/((www|old|pay|[a-z]{2})\.)?reddit\.com\/r\/[a-zA-Z0-9_-]+\/comments\/.*/
-// @grant         none
-// @version       1.10.1
+// @grant         GM.setValue
+// @grant         GM.getValue
+// @grant         GM.listValues
+// @grant         GM.deleteValue
+// @version       1.11.0
 // ==/UserScript==
 
 "use strict";
@@ -37,39 +40,6 @@ let addTask = (function() {
 	channel.port1.onmessage = evt => timeouts.length > 0 ? timeouts.shift()() : null;
 	return func => channel.port2.postMessage(timeouts.push(func));
 })();
-
-
-function purgeOldStorage() {
-	console.log("clearing old localStorage entries");
-
-	let total = 0;
-	for (let key in localStorage) {
-		if (key.indexOf("redd_id_") == 0) {
-			const times = JSON.parse(localStorage.getItem(key));
-			if (times[times.length-1] + expiration < now) {
-				localStorage.removeItem(key);
-				++total;
-			}
-		}
-	}
-
-	if (total == 1) console.log("1 localStorage entry older than " + expiration + "ms has been removed");
-	else console.log(total + " localStorage entries older than " + expiration + "ms have been removed");
-}
-
-// updates localStorage and returns the last time visited
-function updateStorage(threadID) {
-	if (!localStorage.hasOwnProperty(threadID)) {
-		console.log("thread has not been visited before");
-		localStorage.setItem(threadID, "[" + now + "]");
-		return now;
-	} else {
-		let times = JSON.parse(localStorage.getItem(threadID));
-		times.push(now);
-		localStorage.setItem(threadID, JSON.stringify(times.slice(-5)));
-		return times[times.length-2];
-	}
-}
 
 
 // converts the time difference to a nice string
@@ -337,36 +307,85 @@ function hideReadComments(rootNode) {
 }
 
 
-function init() {
-	if (document.querySelector('link[rel="shorturl"]')) {
-		const url_parts = location.pathname.split('/');
-		const threadID = "redd_id_" + url_parts[4] + (url_parts[6] ? '_' + url_parts[6] : '');
-		console.log("thread ID: " + threadID);
-
-		console.log("current time: " + now);
-
-		purgeOldStorage();
-
-		const lastVisit = updateStorage(threadID);
-		console.log("last visit: " + lastVisit);
-
-		let cv = document.getElementById("comment-visits");
-		if (cv !== null) cv.parentElement.parentElement.remove();
-		let times = JSON.parse(localStorage.getItem(threadID)).reverse().slice(1);
-		times.push(0);
-		cv = addTimeSelector(times);
-		cv.dispatchEvent(new Event("change"));
-
-		if (moreCommentsButtons.length || document.querySelector(".showreplies")) {
-			addLoadAllCommentsButton();
-		}
-
-		let comments = document.getElementsByClassName("comment");
-		for (let comment of comments) highlightBetterChild(comment);
-
-		if (lastVisit != now) hideReadComments(document.body);
-
-		initComplete = true;
+async function init() {
+	if (document.querySelector("body.comments-page") === null) {
+		// not a comment page
+		return;
 	}
+
+	console.log("current time " + now);
+
+	// Get the current thread ID.
+	const post_id = document.querySelector('#siteTable .thing[data-fullname^="t3"]').dataset.fullname.split("_")[1];
+	let comment_id = null;
+	const permalinked_comment = document.querySelector("body.comment-permalink-page .commentarea > div > .comment");
+	if (permalinked_comment !== null) {
+		comment_id = permalinked_comment.dataset.fullname.split("_")[1];
+	}
+	const thread_id = "redd_id_" + post_id + (comment_id ? "_" + comment_id : "");
+	console.log("thread id " + thread_id);
+
+	// Migrate localStorage to script storage.
+	for (const key in localStorage) {
+		if (key.indexOf("redd_id_") == 0) {
+			const value = localStorage.getItem(key);
+			if (Number.isInteger(value)) {
+				await GM.setValue(key,"["+value+"]");
+			} else {
+				await GM.setValue(key,value);
+			}
+			localStorage.removeItem(key);
+		}
+	}
+
+	// Update the stored values for the current thread and get the previous value.
+	const times = JSON.parse(await GM.getValue(thread_id,"[]"));
+	times.push(now);
+	// Sort smallest (oldest) to largest (newest).
+	times.sort((a,b) => a-b);
+	// Only store the latest five entries.
+	await GM.setValue(thread_id,JSON.stringify(times.slice(-5)));
+	let last_visit = now;
+	if (times.length === 1) {
+		console.log("thread has not been visited before");
+	} else {
+		last_visit = times[times.length-2];
+	}
+	console.log("last visit " + last_visit);
+
+	// Remove old stored values.
+	console.log("clearing old saved data");
+	let num_purged = 0;
+	const all_gm_stored_keys = await GM.listValues();
+	for (const key of all_gm_stored_keys) {
+		const key_times = JSON.parse(await GM.getValue(key));
+		if (key_times[key_times.length-1] + expiration < now) {
+			await GM.deleteValue(key);
+			++num_purged;
+		}
+	}
+	if (num_purged == 1) console.log("1 entry older than " + expiration + "ms has been removed");
+	else console.log(num_purged + " entries older than " + expiration + "ms have been removed");
+
+	// Remove the "comment-visits" box if it exists.
+	const cv = document.getElementById("comment-visits");
+	if (cv !== null) cv.parentElement.parentElement.remove();
+	// The last time is now, so we don't want to show that in the selector.
+	let selector_times = times.toReversed().slice(1);
+	// Add the "no highlighting" time.
+	selector_times.push(0);
+	// Create a new "comment-visits" box and trigger the selector.
+	addTimeSelector(selector_times).dispatchEvent(new Event("change"));
+
+	if (moreCommentsButtons.length || document.querySelector(".showreplies")) {
+		addLoadAllCommentsButton();
+	}
+
+	let comments = document.getElementsByClassName("comment");
+	for (let comment of comments) highlightBetterChild(comment);
+
+	if (last_visit != now) hideReadComments(document.body);
+
+	initComplete = true;
 }
 addEventListener("load",init,{"passive":true});
