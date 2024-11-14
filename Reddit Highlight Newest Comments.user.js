@@ -5,7 +5,7 @@
 // @author        JonnyRobbie and Yay295
 // @include       /https?:\/\/((www|old|pay|[a-z]{2})\.)?reddit\.com\/r\/[a-zA-Z0-9_-]+\/comments\/.*/
 // @grant         none
-// @version       1.10.0
+// @version       1.10.1
 // ==/UserScript==
 
 "use strict";
@@ -119,6 +119,7 @@ function highlightNewComments(event) {
 		event.stopPropagation();
 		event.currentTarget.parentElement.parentElement.parentElement.classList.remove("new-comment");
 		event.currentTarget.classList.remove("usertext-body");
+		event.currentTarget.removeEventListener("click",removeHighlighting);
 	}
 
 	const rootNode = event.detail || document.body;
@@ -146,7 +147,7 @@ function highlightNewComments(event) {
 			if (ctime > time) comment.classList.add("new-comment");
 			if (ctime > mostRecentTime) mostRecentTime = ctime;
 
-			comment.querySelector(":scope > .entry > form > div").addEventListener("click",removeHighlighting);
+			comment.querySelector(":scope > .entry > form > div").addEventListener("click",removeHighlighting,{"passive":true});
 		}
 	} else {
 		// we need to check every comment because a comment can have an edit date more recent than its replies
@@ -202,7 +203,7 @@ function addTimeSelector(times) {
 
 	let timeSelectSelect = document.createElement("select");
 		timeSelectSelect.id = "comment-visits";
-		timeSelectSelect.addEventListener("change",highlightNewComments);
+		timeSelectSelect.addEventListener("change",highlightNewComments,{"passive":true});
 
 	for (let time of times) {
 		let option = document.createElement("option");
@@ -251,7 +252,7 @@ function addLoadAllCommentsButton() {
 	btn.innerHTML = "load all comments";
 	btn.style.margin = "0px 5px 15px";
 	btn.style.padding = "7px 10px 7px 7px";
-	btn.addEventListener("click",callback);
+	btn.addEventListener("click",callback,{"passive":true});
 
 	let commentarea = document.getElementsByClassName("commentarea")[0];
 	let commentContainer = commentarea.querySelector(":scope > div.sitetable");
@@ -368,4 +369,4 @@ function init() {
 		initComplete = true;
 	}
 }
-addEventListener("load",init);
+addEventListener("load",init,{"passive":true});
