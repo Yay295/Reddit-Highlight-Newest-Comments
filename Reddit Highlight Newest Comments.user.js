@@ -8,7 +8,7 @@
 // @grant         GM.getValue
 // @grant         GM.listValues
 // @grant         GM.deleteValue
-// @version       1.11.2
+// @version       1.11.3
 // ==/UserScript==
 
 "use strict";
@@ -349,7 +349,13 @@ const OLD_REDDIT = {
 
 const NEW_REDDIT = {
 	getThreadID: function() {
-		// TODO
+		const post_element = document.querySelector('div[id^="t3_"][tabindex]');
+		const post_id = post_element.id.split("_")[1];
+		let comment_id = null;
+		if (Array.from(post_element.parentElement.querySelectorAll(":scope > div > div > a")).find(x => x.innerText === "Show parent comments")) {
+			comment_id = document.querySelector('div[data-scroller-first] div[id^="t1_"][tabindex]').id.split("_")[1];
+		}
+		return "redd_id_" + post_id + (comment_id ? "_" + comment_id : "");
 	},
 
 	init: function(times,last_visit) {
@@ -360,7 +366,13 @@ const NEW_REDDIT = {
 
 const NEW_NEW_REDDIT = {
 	getThreadID: function() {
-		// TODO
+		const comment_tree_element = document.querySelector("shreddit-comment-tree");
+		const post_id = comment_tree_element.getAttribute("post-id").split("_")[1];
+		let comment_id = null;
+		if (comment_tree_element.hasAttribute("thingid")) {
+			comment_id = comment_tree_element.getAttribute("thingid").split("_")[1];
+		}
+		return "redd_id_" + post_id + (comment_id ? "_" + comment_id : "");
 	},
 
 	init: function(times,last_visit) {
@@ -379,13 +391,9 @@ async function init() {
 	} else if (document.querySelector('div[id^="t1_"][tabindex]') !== null) {
 		console.log("detected new reddit comment page");
 		reddit = NEW_REDDIT;
-		console.log("support for new reddit not yet added");
-		return;
 	} else if (document.querySelector("shreddit-comment") !== null) {
 		console.log("detected new new reddit comment page");
 		reddit = NEW_NEW_REDDIT;
-		console.log("support for new new reddit not yet added");
-		return;
 	} else {
 		return;
 	}
@@ -407,6 +415,14 @@ async function init() {
 			}
 			localStorage.removeItem(key);
 		}
+	}
+
+	if (reddit === NEW_REDDIT) {
+		console.log("support for new reddit not yet added");
+		return;
+	} else if (reddit === NEW_NEW_REDDIT) {
+		console.log("support for new new reddit not yet added");
+		return;
 	}
 
 	// Update the stored values for the current thread and get the previous value.
