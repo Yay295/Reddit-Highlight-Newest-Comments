@@ -391,10 +391,34 @@ const NEW_NEW_REDDIT = {
 	},
 
 	init: function(times,last_visit) {
-		// TODO
-		// New New Reddit loads more comments as you scroll, so we need to detect that.
-		// New New Reddit does not currently support highlighting new comments natively.
-		// New New Reddit does auto-collapse replies on "contest mode" posts.
+		function highlightNewComments(event) {
+			// TODO
+		}
+
+		let time_selector_container = generateTimeSelector(times);
+			time_selector_container.className = "bg-neutral-background-container p-md xs:rounded-[16px]";
+
+		let time_selector_label = time_selector_container.children[0];
+			time_selector_label.className = "font-semibold";
+
+		let time_selector_selector = time_selector_container.children[0].children[0];
+			time_selector_label.className = "button button-bordered cursor-auto m-0 px-[2px] py-[1px]";
+			time_selector_label.style.borderRadius = "var(--radius-sm)";
+			time_selector_selector.addEventListener("change",highlightNewComments,{"passive":true});
+
+		// New New Reddit loads comments as you scroll, so we need to detect that.
+		// No comment data is in the initial page HTML.
+		const main_content = document.getElementById("main-content");
+		new MutationObserver(mutations => {
+			let comment_body_header = main_content.querySelector("comment-body-header");
+			if (comment_body_header && !comment_body_header.contains(time_selector_container)) {
+				comment_body_header.appendChild(time_selector_container);
+			}
+
+			// TODO
+			// New New Reddit does not currently support highlighting new comments natively.
+			// New New Reddit does auto-collapse replies on "contest mode" posts.
+		}).observe(main_content,{subtree:true,childList:true});
 	}
 }
 
