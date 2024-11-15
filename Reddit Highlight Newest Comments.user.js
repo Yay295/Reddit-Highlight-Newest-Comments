@@ -361,6 +361,7 @@ const NEW_REDDIT = {
 	init: function(times,last_visit) {
 		// TODO
 		// New Reddit does support highlighting new comments natively, but it's very limited compared to what this script does for Old Reddit.
+		// New Reddit does not appear to auto-collapse replies on "contest mode" posts.
 	}
 }
 
@@ -379,6 +380,7 @@ const NEW_NEW_REDDIT = {
 		// TODO
 		// New New Reddit loads more comments as you scroll, so we need to detect that.
 		// New New Reddit does not currently support highlighting new comments natively.
+		// New New Reddit does auto-collapse replies on "contest mode" posts.
 	}
 }
 
