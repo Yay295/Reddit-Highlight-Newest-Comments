@@ -12,6 +12,8 @@ This script only works on Old Reddit.
 Based on https://greasyfork.org/en/scripts/1868-reddit-highlight-newest-comments v1.5.7 by [JonnyRobbie](https://github.com/jonnyrobbie).
 
 ## Changelog
+- 1.11.4
+  - Fix getting the post ID for deleted posts on Old Reddit.
 - 1.11.3
   - Add functions to get the thread ID for New Reddit and New New Reddit.
 - 1.11.2

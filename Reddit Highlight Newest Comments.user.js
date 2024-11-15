@@ -8,7 +8,7 @@
 // @grant         GM.getValue
 // @grant         GM.listValues
 // @grant         GM.deleteValue
-// @version       1.11.3
+// @version       1.11.4
 // ==/UserScript==
 
 "use strict";
@@ -77,7 +77,7 @@ function getMostRecentCommentNote() {
 
 const OLD_REDDIT = {
 	getThreadID: function() {
-		const post_id = document.querySelector('#siteTable .thing[data-fullname^="t3"]').dataset.fullname.split("_")[1];
+		const post_id = document.querySelector('div[id^="siteTable_t3"]').id.split("_")[2];
 		let comment_id = null;
 		const permalinked_comment = document.querySelector("body.comment-permalink-page .commentarea > div > .comment");
 		if (permalinked_comment !== null) {
