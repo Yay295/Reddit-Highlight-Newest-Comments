@@ -64,13 +64,49 @@ function prettify(time) {
 	return (timeString || difference + "ms") + " ago";
 }
 
-function getMostRecentCommentNote() {
-	if (mostRecentTime === 0) {
-		return "";
-	} else {
-		let timestring = prettify(mostRecentTime).replace(/(.*),/,"$1, and").replace(/^([^,]*),( and[^,]*)$/,"$1$2");
-		let timestamp = new Date(mostRecentTime-timeZoneOffset).toISOString().replace("T"," ").replace(/\..+/,"");
-		return "The most recent comment was made/edited " + timestring + " at " + timestamp + ".";
+/**
+ * Generates the elements for the selector to choose how long ago to highlight comments from.
+ * Does not add any styling or event listeners.
+ */
+function generateTimeSelector(times) {
+	let timeSelect = document.createElement("div");
+
+	let timeSelectTitle = document.createElement("div");
+		timeSelectTitle.innerHTML = "Highlight comments posted since previous visit: ";
+
+	let timeSelectSelect = document.createElement("select");
+
+	for (let time of times) {
+		let option = document.createElement("option");
+			option.value = time;
+			option.innerHTML = prettify(time);
+		timeSelectSelect.appendChild(option);
+	}
+
+	timeSelectTitle.appendChild(timeSelectSelect);
+
+	let timeSelectMostRecent = document.createElement("span");
+		timeSelectMostRecent.id = "most-recent-comment";
+
+	timeSelect.appendChild(timeSelectTitle);
+	timeSelect.appendChild(timeSelectMostRecent);
+
+	return timeSelect;
+}
+
+/**
+ * Updates the most recent comment note in the time selector element based on the "mostRecentTime" global variable.
+ */
+function updateMostRecentComment() {
+	let mostRecentSpan = document.getElementById("most-recent-comment");
+	if (mostRecentSpan) {
+		if (mostRecentTime === 0) {
+			mostRecentSpan.innerText = "";
+		} else {
+			let timestring = prettify(mostRecentTime).replace(/(.*),/,"$1, and").replace(/^([^,]*),( and[^,]*)$/,"$1$2");
+			let timestamp = new Date(mostRecentTime-timeZoneOffset).toISOString().replace("T"," ").replace(/\..+/,"");
+			mostRecentSpan.innerText = "The most recent comment was made/edited " + timestring + " at " + timestamp + ".";
+		}
 	}
 }
 
@@ -92,13 +128,6 @@ const OLD_REDDIT = {
 
 		let moreCommentsButtons = document.getElementsByClassName("morecomments");
 
-
-		function updateMostRecentComment() {
-			let mostRecentSpan = document.getElementById("most-recent-comment");
-			if (mostRecentSpan) {
-				mostRecentSpan.innerText = getMostRecentCommentNote();
-			}
-		}
 
 		// event callback to do the comment highlighting
 		function highlightNewComments(event) {
@@ -177,33 +206,18 @@ const OLD_REDDIT = {
 
 		// add selector to choose how long ago to highlight comments from (includes function to highlight comments)
 		function addTimeSelector(times) {
-			let commentarea = document.getElementsByClassName("commentarea")[0];
-			let commentContainer = commentarea.querySelector(":scope > div.sitetable");
-
-			let timeSelect = document.createElement("div");
+			let timeSelect = generateTimeSelector(times);
 				timeSelect.className = "rounded gold-accent comment-visits-box";
 
-			let timeSelectMostRecent = document.createElement("span");
-				timeSelectMostRecent.id = "most-recent-comment";
-
-			let timeSelectTitle = document.createElement("div");
+			let timeSelectTitle = timeSelect.children[0];
 				timeSelectTitle.className = "title";
-				timeSelectTitle.innerHTML = "Highlight comments posted since previous visit: ";
 
-			let timeSelectSelect = document.createElement("select");
+			let timeSelectSelect = timeSelectTitle.children[0];
 				timeSelectSelect.id = "comment-visits";
 				timeSelectSelect.addEventListener("change",highlightNewComments,{"passive":true});
 
-			for (let time of times) {
-				let option = document.createElement("option");
-					option.value = time;
-					option.innerHTML = prettify(time);
-				timeSelectSelect.appendChild(option);
-			}
-
-			timeSelectTitle.appendChild(timeSelectSelect);
-			timeSelect.appendChild(timeSelectTitle);
-			timeSelect.appendChild(timeSelectMostRecent);
+			let commentarea = document.getElementsByClassName("commentarea")[0];
+			let commentContainer = commentarea.querySelector(":scope > div.sitetable");
 			commentarea.insertBefore(timeSelect,commentContainer);
 
 			return timeSelectSelect;
