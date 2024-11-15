@@ -86,7 +86,7 @@ const OLD_REDDIT = {
 		return "redd_id_" + post_id + (comment_id ? "_" + comment_id : "");
 	},
 
-	init: function(times) {
+	init: function(times,last_visit) {
 		// array of mutation observers
 		let observers = [];
 
@@ -406,7 +406,7 @@ async function init() {
 	if (num_purged == 1) console.log("1 entry older than " + expiration + "ms has been removed");
 	else console.log(num_purged + " entries older than " + expiration + "ms have been removed");
 
-	reddit.init(times);
+	reddit.init(times,last_visit);
 
 	initComplete = true;
 }
