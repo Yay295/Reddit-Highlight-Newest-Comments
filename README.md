@@ -12,6 +12,8 @@ This script only works on Old Reddit.
 Based on https://greasyfork.org/en/scripts/1868-reddit-highlight-newest-comments v1.5.7 by [JonnyRobbie](https://github.com/jonnyrobbie).
 
 ## Changelog
+- 1.11.2
+  - Add code to detect New Reddit and New New Reddit.
 - 1.11.1
   - Refactor code to potentially support New Reddit in the future.
 - 1.11.0

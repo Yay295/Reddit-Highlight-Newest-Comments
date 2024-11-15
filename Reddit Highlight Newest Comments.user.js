@@ -8,7 +8,7 @@
 // @grant         GM.getValue
 // @grant         GM.listValues
 // @grant         GM.deleteValue
-// @version       1.11.1
+// @version       1.11.2
 // ==/UserScript==
 
 "use strict";
@@ -347,6 +347,28 @@ const OLD_REDDIT = {
 	}
 };
 
+const NEW_REDDIT = {
+	getThreadID: function() {
+		// TODO
+	},
+
+	init: function(times,last_visit) {
+		// TODO
+		// New Reddit does support highlighting new comments natively, but it's very limited compared to what this script does for Old Reddit.
+	}
+}
+
+const NEW_NEW_REDDIT = {
+	getThreadID: function() {
+		// TODO
+	},
+
+	init: function(times,last_visit) {
+		// TODO
+		// New New Reddit loads more comments as you scroll, so we need to detect that.
+		// New New Reddit does not currently support highlighting new comments natively.
+	}
+}
 
 
 async function init() {
@@ -354,6 +376,16 @@ async function init() {
 	if (document.querySelector("body.comments-page") !== null) {
 		console.log("detected old reddit comment page");
 		reddit = OLD_REDDIT;
+	} else if (document.querySelector('div[id^="t1_"][tabindex]') !== null) {
+		console.log("detected new reddit comment page");
+		reddit = NEW_REDDIT;
+		console.log("support for new reddit not yet added");
+		return;
+	} else if (document.querySelector("shreddit-comment") !== null) {
+		console.log("detected new new reddit comment page");
+		reddit = NEW_NEW_REDDIT;
+		console.log("support for new new reddit not yet added");
+		return;
 	} else {
 		return;
 	}
