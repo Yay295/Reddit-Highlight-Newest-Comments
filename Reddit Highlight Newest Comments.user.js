@@ -8,7 +8,7 @@
 // @grant         GM.getValue
 // @grant         GM.listValues
 // @grant         GM.deleteValue
-// @version       1.11.4
+// @version       1.12.0
 // ==/UserScript==
 
 "use strict";
@@ -393,10 +393,73 @@ const NEW_NEW_REDDIT = {
 	},
 
 	init: function(times,last_visit) {
-		function highlightNewComments(event) {
-			// TODO
+		/**
+		 * Highlights a comment and adds an event listener to unhighlight it on click.
+		 * New New Reddit does not currently support highlighting new comments natively,
+		 * so this uses the same background color as Old Reddit.
+		 * @param comment - A <shreddit-comment> element.
+		 */
+		function highlightComment(comment) {
+			let comment_body = comment.querySelector(":scope > div.md");
+			comment_body.style.backgroundColor = "#E5EFFF";
+			comment_body.style.marginBottom = "0.25rem";
+			comment.addEventListener("click",unhighlightCommentCallback,{"passive":true});
 		}
 
+		/**
+		 * Unhighlights a comment and removes the event listener to unhighlight it on click.
+		 * @param comment - A <shreddit-comment> element.
+		 */
+		function unhighlightComment(comment) {
+			let comment_body = comment.querySelector(":scope > div.md");
+			comment_body.style.backgroundColor = null;
+			comment_body.style.marginBottom = null;
+			comment.removeEventListener("click",unhighlightCommentCallback);
+		}
+
+		/**
+		 * @param event - An event whose current target a <shreddit-comment> element.
+		 */
+		function unhighlightCommentCallback(event) {
+			event.stopPropagation();
+			unhighlightComment(event.currentTarget);
+		}
+
+		/**
+		 * @param comment - A <shreddit-comment> element.
+		 * @return The submit/edit time of the given comment.
+		 */
+		function getCommentTime(comment) {
+			// There might be more than one if the comment has been edited.
+			let times = comment.querySelectorAll(':scope > div[slot=commentMeta] time');
+			return Math.max(...Array.from(times).map(e => Date.parse(e.dateTime)));
+		}
+
+		/**
+		 * Goes through the given list of comments highlighting those that are
+		 * newer than the selected time, and unhighlighting those that aren't.
+		 * @param comments - The list of comments to highlight/unhighlight.
+		 */
+		function highlightNewComments(comments) {
+			let time = parseInt(time_selector_selector.value,10);
+			if (time === 0) {
+				for (let comment of comments) {
+					unhighlightComment(comment);
+				}
+			} else {
+				console.log("highlighting comments from " + prettify(time));
+				for (let comment of comments) {
+					let comment_time = getCommentTime(comment);
+					if (comment_time >= time) {
+						highlightComment(comment);
+					} else {
+						unhighlightComment(comment);
+					}
+				}
+			}
+		}
+
+		// TODO Move this above the "Sort by" element? If so, add "my-sm" to the container classes.
 		let time_selector_container = generateTimeSelector(times);
 			time_selector_container.className = "bg-neutral-background-container p-md xs:rounded-[16px]";
 
@@ -404,23 +467,55 @@ const NEW_NEW_REDDIT = {
 			time_selector_label.className = "font-semibold";
 
 		let time_selector_selector = time_selector_container.children[0].children[0];
-			time_selector_label.className = "button button-bordered cursor-auto m-0 px-[2px] py-[1px]";
-			time_selector_label.style.borderRadius = "var(--radius-sm)";
-			time_selector_selector.addEventListener("change",highlightNewComments,{"passive":true});
+			time_selector_selector.className = "button button-bordered cursor-auto m-0 px-[2px] py-[1px]";
+			time_selector_selector.style.borderRadius = "var(--radius-sm)";
+			time_selector_selector.addEventListener(
+				"change",
+				event => highlightNewComments(document.querySelectorAll("shreddit-comment")),
+				{"passive":true}
+			);
 
-		// New New Reddit loads comments as you scroll, so we need to detect that.
-		// No comment data is in the initial page HTML.
-		const main_content = document.getElementById("main-content");
-		new MutationObserver(mutations => {
+		/**
+		 * @param comments - The list of <shreddit-comment> elements to process.
+		 */
+		function processChanges(comments) {
+			// Add the time selector to the page.
 			let comment_body_header = main_content.querySelector("comment-body-header");
 			if (comment_body_header && !comment_body_header.contains(time_selector_container)) {
 				comment_body_header.appendChild(time_selector_container);
 			}
 
+			highlightNewComments(comments);
+
+			for (let comment of comments) {
+				let comment_time = getCommentTime(comment);
+				if (comment_time > mostRecentTime) {
+					mostRecentTime = comment_time;
+				}
+			}
+			updateMostRecentComment();
+
 			// TODO
-			// New New Reddit does not currently support highlighting new comments natively.
 			// New New Reddit does auto-collapse replies on "contest mode" posts.
+		}
+
+		// New New Reddit loads comments as you scroll, so we need to detect that.
+		// No comment data is in the initial page HTML.
+		const main_content = document.getElementById("main-content");
+		new MutationObserver(mutations => {
+			let all_added_comments = new Set();
+			for (let mutation of mutations) {
+				for (let node of mutation.addedNodes) {
+					if (node.tagName === "SHREDDIT-COMMENT") {
+						all_added_comments.add(node);
+					}
+				}
+			}
+			processChanges(comments);
 		}).observe(main_content,{subtree:true,childList:true});
+
+		// Some of the page may have already loaded, so we need to process anything the MutationObserver missed.
+		processChanges(main_content.querySelectorAll("shreddit-comment"));
 	}
 }
 
@@ -433,10 +528,11 @@ async function init() {
 	} else if (document.querySelector('div[id^="t1_"][tabindex]') !== null) {
 		console.log("detected new reddit comment page");
 		reddit = NEW_REDDIT;
-	} else if (document.querySelector("shreddit-comment") !== null) {
+	} else if (document.querySelector("shreddit-comment-tree") !== null) {
 		console.log("detected new new reddit comment page");
 		reddit = NEW_NEW_REDDIT;
 	} else {
+		// TODO Add event listener to rerun init on New Reddit and New New Reddit if a post is opened in the current window.
 		return;
 	}
 
@@ -461,9 +557,6 @@ async function init() {
 
 	if (reddit === NEW_REDDIT) {
 		console.log("support for new reddit not yet added");
-		return;
-	} else if (reddit === NEW_NEW_REDDIT) {
-		console.log("support for new new reddit not yet added");
 		return;
 	}
 
