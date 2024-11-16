@@ -1,13 +1,12 @@
-This script highlights new comments since your last visit, and collapses all comments that are older.
-It also adds a button to load all comments that are hidden behind a "load more comments" or "[show replies]"
-link. This can take some time, so an alert popup will be shown when it's done. This script does not
-follow "continue this thread" links since those actually lead to a new page. However, if you follow
-one of those links yourself (or go to a comment permalink), this script will recognize comments on
-that page.
+This script highlights new comments since your last visit, and collapses all comments that are older. It also adds a
+button to load all hidden comment replies<sup>1</sup>. This can take some time, so an alert popup will be shown when
+it's done. This script does not follow "continue this thread" links since those actually lead to a new page. However,
+if you follow one of those links yourself (or go to a comment permalink), this script will recognize comments on that
+page.
 
 All features are available on Old Reddit.  
 No features are available on New Reddit.  
-Only new comment highlighting is available on New New Reddit.
+Only new comment highlighting and the "load all comments" button are available on New New Reddit.
 
 This script currently only works on New Reddit and New New Reddit if you open the post in a new tab,
 because clicking on a post doesn't reload the page, so the script doesn't get triggered.
@@ -17,6 +16,8 @@ because clicking on a post doesn't reload the page, so the script doesn't get tr
 Based on https://greasyfork.org/en/scripts/1868-reddit-highlight-newest-comments v1.5.7 by [JonnyRobbie](https://github.com/jonnyrobbie).
 
 ## Changelog
+- 1.13.0
+  - Add button to load all comments to New New Reddit.
 - 1.12.3
   - Fix detecting new comments on New New Reddit.
 - 1.12.2
@@ -117,3 +118,7 @@ Based on https://greasyfork.org/en/scripts/1868-reddit-highlight-newest-comments
 - 1.3.1
   - Added expiration for `localStorage`, defaulted to 14 days. It won't grow indefinitely now.
   - Reduced the amount of console.log clutter
+
+## Notes
+
+1. On Old Reddit the links/buttons to load more replies use the text "load more comments" or "[show replies]". On New Reddit and New New Reddit they use the text "# more replies".

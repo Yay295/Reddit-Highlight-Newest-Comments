@@ -8,7 +8,7 @@
 // @grant         GM.getValue
 // @grant         GM.listValues
 // @grant         GM.deleteValue
-// @version       1.12.3
+// @version       1.13.0
 // ==/UserScript==
 
 "use strict";
@@ -393,6 +393,10 @@ const NEW_NEW_REDDIT = {
 	},
 
 	init: function(times,last_visit) {
+		const MORE_REPLIES_BUTTON_QUERY = 'faceplate-partial[loading="action"]';
+
+		let loading_all_comments = false;
+
 		/**
 		 * Highlights a comment and adds an event listener to unhighlight it on click.
 		 * New New Reddit does not currently support highlighting new comments natively,
@@ -459,6 +463,21 @@ const NEW_NEW_REDDIT = {
 			}
 		}
 
+		function loadAllComments() {
+			loading_all_comments = true;
+			load_all_comments_button.remove();
+			let moreRepliesButtons = document.querySelectorAll(MORE_REPLIES_BUTTON_QUERY);
+			if (moreRepliesButtons.length > 0) {
+				for (let btn of moreRepliesButtons) {
+					btn.click();
+				}
+				setTimeout(loadAllComments,100);
+			} else {
+				alert("done loading all comments");
+				loading_all_comments = false;
+			}
+		}
+
 		// The last time is now, so we don't want to show that in the selector.
 		let selector_times = times.toReversed().slice(1);
 		// Add the "no highlighting" time.
@@ -480,14 +499,25 @@ const NEW_NEW_REDDIT = {
 				{"passive":true}
 			);
 
+		let load_all_comments_button = document.createElement("button");
+			load_all_comments_button.innerHTML = "load all comments";
+			load_all_comments_button.className = "button button-bordered my-sm px-sm";
+			load_all_comments_button.addEventListener("click",loadAllComments,{"passive":true});
+
 		/**
 		 * @param comments - The list of <shreddit-comment> elements to process.
 		 */
 		function processChanges(comments) {
-			// Add the time selector to the page.
 			let comment_body_header = main_content.querySelector("comment-body-header");
-			if (comment_body_header && !comment_body_header.contains(time_selector_container)) {
-				comment_body_header.appendChild(time_selector_container);
+			if (comment_body_header) {
+				// Add the time selector to the page.
+				if (!comment_body_header.contains(time_selector_container)) {
+					comment_body_header.appendChild(time_selector_container);
+				}
+				// Add the "load all comments" button to the page.
+				if (!loading_all_comments && document.querySelector(MORE_REPLIES_BUTTON_QUERY) !== null && !comment_body_header.contains(load_all_comments_button)) {
+					comment_body_header.appendChild(load_all_comments_button);
+				}
 			}
 
 			highlightNewComments(comments);
