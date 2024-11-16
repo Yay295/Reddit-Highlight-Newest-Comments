@@ -14,8 +14,8 @@
 "use strict";
 
 /*-----settings-----*/
-const expiration = 30 * 7 * 24 * 60 * 60 * 1000;   // expiration time in milliseconds
-const betterChildStyle = "3px solid #9AE";         // border of said comment
+const expiration = 30 * 7 * 24 * 60 * 60 * 1000; // expiration time in milliseconds
+const betterChildStyle = "3px solid #9AE"; // border of said comment
 /*-----settings-----*/
 
 // times in milliseconds
@@ -28,8 +28,6 @@ const timeZoneOffset = new Date().getTimezoneOffset() * 60000;
 
 // most recent comment time
 let mostRecentTime = 0;
-
-let initComplete = false;
 
 
 // adds a task while avoiding the 4ms delay from setTimeout
@@ -123,6 +121,8 @@ const OLD_REDDIT = {
 	},
 
 	init: function(times,last_visit) {
+		let initComplete = false;
+
 		// array of mutation observers
 		let observers = [];
 
@@ -358,6 +358,8 @@ const OLD_REDDIT = {
 		for (let comment of comments) highlightBetterChild(comment);
 
 		if (last_visit != now) hideReadComments(document.body);
+
+		initComplete = true;
 	}
 };
 
@@ -495,7 +497,5 @@ async function init() {
 	else console.log(num_purged + " entries older than " + expiration + "ms have been removed");
 
 	reddit.init(times,last_visit);
-
-	initComplete = true;
 }
 addEventListener("load",init,{"passive":true});
