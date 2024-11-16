@@ -17,6 +17,8 @@ because clicking on a post doesn't reload the page, so the script doesn't get tr
 Based on https://greasyfork.org/en/scripts/1868-reddit-highlight-newest-comments v1.5.7 by [JonnyRobbie](https://github.com/jonnyrobbie).
 
 ## Changelog
+- 1.12.3
+  - Fix detecting new comments on New New Reddit.
 - 1.12.2
   - Attach the `unhighlightComment` listener to the comment body instead of the full comment on New New Reddit.
 - 1.12.1

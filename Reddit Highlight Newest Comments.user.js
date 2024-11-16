@@ -8,7 +8,7 @@
 // @grant         GM.getValue
 // @grant         GM.listValues
 // @grant         GM.deleteValue
-// @version       1.12.2
+// @version       1.12.3
 // ==/UserScript==
 
 "use strict";
@@ -447,7 +447,7 @@ const NEW_NEW_REDDIT = {
 					unhighlightComment(comment);
 				}
 			} else {
-				console.log("highlighting comments from " + prettify(time));
+				console.log("highlighting " + comments.length + " comments from " + prettify(time));
 				for (let comment of comments) {
 					let comment_time = getCommentTime(comment);
 					if (comment_time >= time) {
@@ -513,14 +513,23 @@ const NEW_NEW_REDDIT = {
 				for (let node of mutation.addedNodes) {
 					if (node.tagName === "SHREDDIT-COMMENT") {
 						all_added_comments.add(node);
+						let replies = node.querySelectorAll("shreddit-comment");
+						for (let reply of replies) {
+							all_added_comments.add(reply);
+						}
 					}
 				}
 			}
-			processChanges(comments);
+			if (all_added_comments.size > 0) {
+				processChanges(Array.from(all_added_comments));
+			}
 		}).observe(main_content,{subtree:true,childList:true});
 
 		// Some of the page may have already loaded, so we need to process anything the MutationObserver missed.
-		processChanges(main_content.querySelectorAll("shreddit-comment"));
+		let comments = main_content.querySelectorAll("shreddit-comment");
+		if (comments.length > 0) {
+			processChanges(comments);
+		}
 	}
 }
 
