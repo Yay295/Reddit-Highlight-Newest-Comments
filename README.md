@@ -17,6 +17,8 @@ because clicking on a post doesn't reload the page, so the script doesn't get tr
 Based on https://greasyfork.org/en/scripts/1868-reddit-highlight-newest-comments v1.5.7 by [JonnyRobbie](https://github.com/jonnyrobbie).
 
 ## Changelog
+- 1.12.1
+  - Fix times shown in time selector on New New Reddit.
 - 1.12.0
   - Add highlighting new comments to New New Reddit.
 - 1.11.4

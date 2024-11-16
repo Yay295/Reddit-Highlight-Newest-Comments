@@ -8,7 +8,7 @@
 // @grant         GM.getValue
 // @grant         GM.listValues
 // @grant         GM.deleteValue
-// @version       1.12.0
+// @version       1.12.1
 // ==/UserScript==
 
 "use strict";
@@ -459,8 +459,13 @@ const NEW_NEW_REDDIT = {
 			}
 		}
 
+		// The last time is now, so we don't want to show that in the selector.
+		let selector_times = times.toReversed().slice(1);
+		// Add the "no highlighting" time.
+		selector_times.push(0);
+
 		// TODO Move this above the "Sort by" element? If so, add "my-sm" to the container classes.
-		let time_selector_container = generateTimeSelector(times);
+		let time_selector_container = generateTimeSelector(selector_times);
 			time_selector_container.className = "bg-neutral-background-container p-md xs:rounded-[16px]";
 
 		let time_selector_label = time_selector_container.children[0];
