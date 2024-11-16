@@ -8,7 +8,7 @@
 // @grant         GM.getValue
 // @grant         GM.listValues
 // @grant         GM.deleteValue
-// @version       1.12.1
+// @version       1.12.2
 // ==/UserScript==
 
 "use strict";
@@ -403,7 +403,7 @@ const NEW_NEW_REDDIT = {
 			let comment_body = comment.querySelector(":scope > div.md");
 			comment_body.style.backgroundColor = "#E5EFFF";
 			comment_body.style.marginBottom = "0.25rem";
-			comment.addEventListener("click",unhighlightCommentCallback,{"passive":true});
+			comment_body.addEventListener("click",unhighlightCommentCallback,{"passive":true});
 		}
 
 		/**
@@ -414,7 +414,7 @@ const NEW_NEW_REDDIT = {
 			let comment_body = comment.querySelector(":scope > div.md");
 			comment_body.style.backgroundColor = null;
 			comment_body.style.marginBottom = null;
-			comment.removeEventListener("click",unhighlightCommentCallback);
+			comment_body.removeEventListener("click",unhighlightCommentCallback);
 		}
 
 		/**
@@ -422,7 +422,7 @@ const NEW_NEW_REDDIT = {
 		 */
 		function unhighlightCommentCallback(event) {
 			event.stopPropagation();
-			unhighlightComment(event.currentTarget);
+			unhighlightComment(event.currentTarget.parentElement);
 		}
 
 		/**
