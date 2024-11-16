@@ -8,14 +8,13 @@ All features are available on Old Reddit.
 No features are available on New Reddit.  
 Only new comment highlighting and the "load all comments" button are available on New New Reddit.
 
-This script currently only works on New Reddit and New New Reddit if you open the post in a new tab,
-because clicking on a post doesn't reload the page, so the script doesn't get triggered.
-
 [Install/Update](https://raw.githubusercontent.com/Yay295/Reddit-Highlight-Newest-Comments/refs/heads/main/Reddit%20Highlight%20Newest%20Comments.user.js)
 
 Based on https://greasyfork.org/en/scripts/1868-reddit-highlight-newest-comments v1.5.7 by [JonnyRobbie](https://github.com/jonnyrobbie).
 
 ## Changelog
+- 1.14.0
+  - Handle SPA navigations on New New Reddit.
 - 1.13.0
   - Add button to load all comments to New New Reddit.
 - 1.12.3

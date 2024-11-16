@@ -3,12 +3,12 @@
 // @description   Highlights new comments in a thread since your last visit
 // @namespace     https://greasyfork.org/users/98-jonnyrobbie
 // @author        JonnyRobbie and Yay295
-// @include       /https?:\/\/(([a-z]{2,3})\.)?reddit\.com\/r\/[a-zA-Z0-9_-]+\/comments\/.*/
+// @match         *://*.reddit.com/*
 // @grant         GM.setValue
 // @grant         GM.getValue
 // @grant         GM.listValues
 // @grant         GM.deleteValue
-// @version       1.13.0
+// @version       1.14.0
 // ==/UserScript==
 
 "use strict";
@@ -18,8 +18,7 @@ const expiration = 30 * 7 * 24 * 60 * 60 * 1000; // expiration time in milliseco
 const betterChildStyle = "3px solid #9AE"; // border of said comment
 /*-----settings-----*/
 
-// times in milliseconds
-const now = Date.now();
+// time durations in milliseconds
 const oneMinute = 60 * 1000;
 const oneHour = 60 * oneMinute;
 const oneDay = 24 * oneHour;
@@ -41,7 +40,7 @@ let addTask = (function() {
 function prettify(time) {
 	if (time == 0) return "no highlighting";
 
-	let timeString = "", difference = now - time;
+	let timeString = "", difference = Date.now() - time;
 
 	if (difference > oneDay) {
 		const days = (difference / oneDay) | 0;
@@ -120,7 +119,7 @@ const OLD_REDDIT = {
 		return "redd_id_" + post_id + (comment_id ? "_" + comment_id : "");
 	},
 
-	init: function(times,last_visit) {
+	init: function(times) {
 		let initComplete = false;
 
 		// array of mutation observers
@@ -357,7 +356,11 @@ const OLD_REDDIT = {
 		let comments = document.getElementsByClassName("comment");
 		for (let comment of comments) highlightBetterChild(comment);
 
-		if (last_visit != now) hideReadComments(document.body);
+		// If there's only one time in the list this is our first
+		// time visiting this page, so there's nothing to hide.
+		if (times.length > 1) {
+			hideReadComments(document.body);
+		}
 
 		initComplete = true;
 	}
@@ -374,16 +377,24 @@ const NEW_REDDIT = {
 		return "redd_id_" + post_id + (comment_id ? "_" + comment_id : "");
 	},
 
-	init: function(times,last_visit) {
+	init: function(times) {
 		// TODO
 		// New Reddit does support highlighting new comments natively, but it's very limited compared to what this script does for Old Reddit.
 		// New Reddit does not appear to auto-collapse replies on "contest mode" posts.
 	}
 }
+// TODO Detect SPA navigations on New Reddit.
 
 const NEW_NEW_REDDIT = {
+	APP_ELEMENT: document.querySelector("shreddit-app"),
+	APP_ELEMENT_MUTATION_OBSERVER: null,
+	LAST_OBSERVED_THREAD_ID: null,
+
 	getThreadID: function() {
 		const comment_tree_element = document.querySelector("shreddit-comment-tree");
+		if (comment_tree_element === null) {
+			return null;
+		}
 		const post_id = comment_tree_element.getAttribute("post-id").split("_")[1];
 		let comment_id = null;
 		if (comment_tree_element.hasAttribute("thingid")) {
@@ -392,7 +403,7 @@ const NEW_NEW_REDDIT = {
 		return "redd_id_" + post_id + (comment_id ? "_" + comment_id : "");
 	},
 
-	init: function(times,last_visit) {
+	init: function(times) {
 		const MORE_REPLIES_BUTTON_QUERY = 'faceplate-partial[loading="action"]';
 
 		let loading_all_comments = false;
@@ -562,21 +573,43 @@ const NEW_NEW_REDDIT = {
 		}
 	}
 }
+// If we're on New New Reddit we need to watch for SPA navigations.
+if (NEW_NEW_REDDIT.APP_ELEMENT !== null) {
+	NEW_NEW_REDDIT.APP_ELEMENT_MUTATION_OBSERVER = new MutationObserver(mutations => {
+		let new_thread_id = NEW_NEW_REDDIT.getThreadID();
+		if (new_thread_id !== NEW_NEW_REDDIT.LAST_OBSERVED_THREAD_ID) {
+			NEW_NEW_REDDIT.LAST_OBSERVED_THREAD_ID = new_thread_id;
+			init().catch(error => console.error(error));
+		}
+	});
+	NEW_NEW_REDDIT.APP_ELEMENT_MUTATION_OBSERVER.observe(NEW_NEW_REDDIT.APP_ELEMENT,{subtree:true,childList:true});
+	NEW_NEW_REDDIT.LAST_OBSERVED_THREAD_ID = NEW_NEW_REDDIT.getThreadID();
+}
 
 
+// For Old Reddit we can get "now" when the script loads, but because New Reddit and New New Reddit are SPA's,
+// we need to re-get "now" when we detect one of their comment pages.
+let now = Date.now();
 async function init() {
-	let reddit;
-	if (document.querySelector("body.comments-page") !== null) {
-		console.log("detected old reddit comment page");
-		reddit = OLD_REDDIT;
-	} else if (document.querySelector('div[id^="t1_"][tabindex]') !== null) {
-		console.log("detected new reddit comment page");
-		reddit = NEW_REDDIT;
-	} else if (document.querySelector("shreddit-comment-tree") !== null) {
-		console.log("detected new new reddit comment page");
-		reddit = NEW_NEW_REDDIT;
-	} else {
-		// TODO Add event listener to rerun init on New Reddit and New New Reddit if a post is opened in the current window.
+	let reddit = null;
+
+	// Check if we're on a comment page.
+	if (/^\/r\/[a-zA-Z0-9_-]+\/comments\//.test(location.pathname)) {
+		if (document.querySelector("body.comments-page") !== null) {
+			console.log("detected old reddit comment page");
+			reddit = OLD_REDDIT;
+		} else if (document.querySelector('div[id^="t1_"][tabindex]') !== null) {
+			console.log("detected new reddit comment page");
+			reddit = NEW_REDDIT;
+			now = Date.now();
+		} else if (document.querySelector("shreddit-comment-tree") !== null) {
+			console.log("detected new new reddit comment page");
+			reddit = NEW_NEW_REDDIT;
+			now = Date.now();
+		}
+	}
+
+	if (reddit === null) {
 		return;
 	}
 
@@ -633,6 +666,6 @@ async function init() {
 	if (num_purged == 1) console.log("1 entry older than " + expiration + "ms has been removed");
 	else console.log(num_purged + " entries older than " + expiration + "ms have been removed");
 
-	reddit.init(times,last_visit);
+	reddit.init(times);
 }
-addEventListener("load",init,{"passive":true});
+init().catch(error => console.error(error));
