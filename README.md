@@ -4,15 +4,17 @@ it's done. This script does not follow "continue this thread" links since those 
 if you follow one of those links yourself (or go to a comment permalink), this script will recognize comments on that
 page.
 
-All features are available on Old Reddit.  
-No features are available on New Reddit.  
-Only new comment highlighting and the "load all comments" button are available on New New Reddit.
+This script works on Old Reddit and New New Reddit, but not New Reddit.  
+There is an issue on New New Reddit where sometimes the button to load more replies doesn't actually load any replies,
+which means the code to auto-collapse old comments doesn't get triggered.
 
 [Install/Update](https://raw.githubusercontent.com/Yay295/Reddit-Highlight-Newest-Comments/refs/heads/main/Reddit%20Highlight%20Newest%20Comments.user.js)
 
 Based on https://greasyfork.org/en/scripts/1868-reddit-highlight-newest-comments v1.5.7 by [JonnyRobbie](https://github.com/jonnyrobbie).
 
 ## Changelog
+- 1.15.0
+  - Auto-collapse old comments on New New Reddit.
 - 1.14.1
   - Improve highlighting/unhighlighting performance on New New Reddit.
 - 1.14.0

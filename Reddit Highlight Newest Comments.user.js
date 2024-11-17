@@ -8,7 +8,7 @@
 // @grant         GM.getValue
 // @grant         GM.listValues
 // @grant         GM.deleteValue
-// @version       1.14.1
+// @version       1.15.0
 // ==/UserScript==
 
 "use strict";
@@ -406,6 +406,7 @@ const NEW_NEW_REDDIT = {
 	init: function(times) {
 		const MORE_REPLIES_BUTTON_QUERY = 'faceplate-partial[loading="action"]';
 		const COMMENT_BODY_SYMBOL = Symbol();
+		const COMMENT_HIGHLIGHTED_SYMBOL = Symbol();
 
 		let loading_all_comments = false;
 
@@ -430,6 +431,7 @@ const NEW_NEW_REDDIT = {
 			comment_body.style.backgroundColor = "#E5EFFF";
 			comment_body.style.marginBottom = "0.25rem";
 			comment_body.addEventListener("click",unhighlightCommentCallback,{"passive":true});
+			comment[COMMENT_HIGHLIGHTED_SYMBOL] = true;
 		}
 
 		/**
@@ -441,6 +443,7 @@ const NEW_NEW_REDDIT = {
 			comment_body.style.backgroundColor = null;
 			comment_body.style.marginBottom = null;
 			comment_body.removeEventListener("click",unhighlightCommentCallback);
+			comment[COMMENT_HIGHLIGHTED_SYMBOL] = false;
 		}
 
 		/**
@@ -485,6 +488,69 @@ const NEW_NEW_REDDIT = {
 			}
 		}
 
+		/**
+		 * Goes through the given list of comments collapsing those that are
+		 * not highligted, do not have any highlighted children, and do not
+		 * have any unloaded children. Highlighted comments and their ancestors
+		 * will be uncollapsed. If the current selected time is 0, all comments
+		 * will be uncollapsed.
+		 * @param comments - The list of comments to hide/unhide.
+		 */
+		function hideOldComments(comments) {
+			let collapsed = 0, uncollapsed = 0;
+			if (parseInt(time_selector_selector.value,10) === 0) {
+				for (let comment of comments) {
+					if (comment.hasAttribute("collapsed")) {
+						comment.removeAttribute("collapsed");
+						++uncollapsed;
+					}
+				}
+			} else {
+				// Sort comments based on their position in the DOM, with replies before their parent.
+				let sorted_comments = Array.from(comments).sort((c1,c2) => {
+					if (c1 === c2) return 0;
+					// https://developer.mozilla.org/en-US/docs/Web/API/Node/compareDocumentPosition
+					return c1.compareDocumentPosition(c2) & Node.DOCUMENT_POSITION_FOLLOWING ? 1 : -1;
+				});
+				// Use a Set so that if we add more comments, we won't add one that's already in the list.
+				let comment_set = new Set(sorted_comments);
+				for (let comment of comment_set) {
+					let changed = false;
+					if (
+						// this comment is not highlighted
+						!comment[COMMENT_HIGHLIGHTED_SYMBOL]
+						// this comment does not have any unloaded replies
+						&& !comment.querySelector(MORE_REPLIES_BUTTON_QUERY)
+						// all of this comment's direct children are not highlighted and are collapsed
+						&& Array.from(comment.querySelectorAll(":scope > shreddit-comment")).every(reply => !reply[COMMENT_HIGHLIGHTED_SYMBOL] && reply.hasAttribute("collapsed"))
+					) {
+						if (!comment.hasAttribute("collapsed")) {
+							comment.setAttribute("collapsed","");
+							++collapsed;
+							changed = true;
+						}
+					} else {
+						if (comment.hasAttribute("collapsed")) {
+							comment.removeAttribute("collapsed");
+							++uncollapsed;
+							changed = true;
+						}
+					}
+					// Remove this comment from the set so that - in case we somehow
+					// try to add it back in the future - it will be re-processed.
+					comment_set.delete(comment);
+					if (changed) {
+						// Since we collapsed/uncollapsed this comment,
+						// we now need to also check its parent, if it has one.
+						if (comment.parentElement.tagName === "SHREDDIT-COMMENT") {
+							comment_set.add(comment.parentElement);
+						}
+					}
+				}
+			}
+			console.log("collapsed %i and uncollapsed %i comments", collapsed, uncollapsed);
+		}
+
 		function loadAllComments() {
 			loading_all_comments = true;
 			load_all_comments_button.remove();
@@ -517,7 +583,11 @@ const NEW_NEW_REDDIT = {
 			time_selector_selector.style.borderRadius = "var(--radius-sm)";
 			time_selector_selector.addEventListener(
 				"change",
-				event => highlightNewComments(document.querySelectorAll("shreddit-comment")),
+				event => {
+					let comments = document.querySelectorAll("shreddit-comment");
+					highlightNewComments(comments);
+					hideOldComments(comments);
+				},
 				{"passive":true}
 			);
 
@@ -552,9 +622,7 @@ const NEW_NEW_REDDIT = {
 			updateMostRecentComment();
 
 			highlightNewComments(comments);
-
-			// TODO
-			// New New Reddit does auto-collapse replies on "contest mode" posts.
+			hideOldComments(comments);
 		}
 
 		// New New Reddit loads comments as you scroll, so we need to detect that.
