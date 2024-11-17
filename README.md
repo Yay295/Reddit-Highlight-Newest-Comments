@@ -13,6 +13,8 @@ Only new comment highlighting and the "load all comments" button are available o
 Based on https://greasyfork.org/en/scripts/1868-reddit-highlight-newest-comments v1.5.7 by [JonnyRobbie](https://github.com/jonnyrobbie).
 
 ## Changelog
+- 1.14.1
+  - Improve highlighting/unhighlighting performance on New New Reddit.
 - 1.14.0
   - Handle SPA navigations on New New Reddit.
 - 1.13.0

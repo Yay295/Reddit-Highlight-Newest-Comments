@@ -8,7 +8,7 @@
 // @grant         GM.getValue
 // @grant         GM.listValues
 // @grant         GM.deleteValue
-// @version       1.14.0
+// @version       1.14.1
 // ==/UserScript==
 
 "use strict";
@@ -405,8 +405,18 @@ const NEW_NEW_REDDIT = {
 
 	init: function(times) {
 		const MORE_REPLIES_BUTTON_QUERY = 'faceplate-partial[loading="action"]';
+		const COMMENT_BODY_SYMBOL = Symbol();
 
 		let loading_all_comments = false;
+
+		/**
+		 * Adds a property to the given comment that is a reference to its body.
+		 * This allows easier access to the comment body in other functions.
+		 * @param comment - A <shreddit-comment> element.
+		 */
+		function linkCommentToCommentBody(comment) {
+			comment[COMMENT_BODY_SYMBOL] = comment.querySelector(":scope > div.md");
+		}
 
 		/**
 		 * Highlights a comment and adds an event listener to unhighlight it on click.
@@ -415,7 +425,7 @@ const NEW_NEW_REDDIT = {
 		 * @param comment - A <shreddit-comment> element.
 		 */
 		function highlightComment(comment) {
-			let comment_body = comment.querySelector(":scope > div.md");
+			let comment_body = comment[COMMENT_BODY_SYMBOL];
 			comment_body.style.backgroundColor = "#E5EFFF";
 			comment_body.style.marginBottom = "0.25rem";
 			comment_body.addEventListener("click",unhighlightCommentCallback,{"passive":true});
@@ -426,7 +436,7 @@ const NEW_NEW_REDDIT = {
 		 * @param comment - A <shreddit-comment> element.
 		 */
 		function unhighlightComment(comment) {
-			let comment_body = comment.querySelector(":scope > div.md");
+			let comment_body = comment[COMMENT_BODY_SYMBOL];
 			comment_body.style.backgroundColor = null;
 			comment_body.style.marginBottom = null;
 			comment_body.removeEventListener("click",unhighlightCommentCallback);
@@ -531,15 +541,16 @@ const NEW_NEW_REDDIT = {
 				}
 			}
 
-			highlightNewComments(comments);
-
 			for (let comment of comments) {
+				linkCommentToCommentBody(comment);
 				let comment_time = getCommentTime(comment);
 				if (comment_time > mostRecentTime) {
 					mostRecentTime = comment_time;
 				}
 			}
 			updateMostRecentComment();
+
+			highlightNewComments(comments);
 
 			// TODO
 			// New New Reddit does auto-collapse replies on "contest mode" posts.
