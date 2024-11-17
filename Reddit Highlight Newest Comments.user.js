@@ -415,7 +415,8 @@ const NEW_NEW_REDDIT = {
 		 * @param comment - A <shreddit-comment> element.
 		 */
 		function linkCommentToCommentBody(comment) {
-			comment[COMMENT_BODY_SYMBOL] = comment.querySelector(":scope > div.md");
+			// It seems like "targetElement" doesn't get set right away, so it's not available when this script first runs.
+			comment[COMMENT_BODY_SYMBOL] = comment.targetElement || comment.querySelector(":scope > div.md");
 		}
 
 		/**
