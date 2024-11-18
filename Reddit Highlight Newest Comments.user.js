@@ -8,7 +8,7 @@
 // @grant         GM.getValue
 // @grant         GM.listValues
 // @grant         GM.deleteValue
-// @version       1.15.1
+// @version       1.15.2
 // ==/UserScript==
 
 "use strict";
@@ -253,7 +253,12 @@ const OLD_REDDIT = {
 				// to wait for them to be downloaded from the server.
 				let showRepliesButtons = document.querySelectorAll(".showreplies");
 				for (let showRepliesButton of showRepliesButtons) {
-					showRepliesButton.click();
+					showRepliesButton.style.display = "none";
+					for (let child of showRepliesButton.parentElement.children) {
+						if (child.classList.contains("comment")) {
+							child.style.display = null;
+						}
+					}
 				}
 
 				if (moreCommentsButtons.length) {
