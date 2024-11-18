@@ -13,6 +13,8 @@ which means the code to auto-collapse old comments doesn't get triggered.
 Based on https://greasyfork.org/en/scripts/1868-reddit-highlight-newest-comments v1.5.7 by [JonnyRobbie](https://github.com/jonnyrobbie).
 
 ## Changelog
+- 1.15.1
+  - Improve auto-collapse performance on Old Reddit.
 - 1.15.0
   - Auto-collapse old comments on New New Reddit.
 - 1.14.1

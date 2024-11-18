@@ -8,7 +8,7 @@
 // @grant         GM.getValue
 // @grant         GM.listValues
 // @grant         GM.deleteValue
-// @version       1.15.0
+// @version       1.15.1
 // ==/UserScript==
 
 "use strict";
@@ -128,6 +128,28 @@ const OLD_REDDIT = {
 		let moreCommentsButtons = document.getElementsByClassName("morecomments");
 
 
+		/**
+		 * Collapses the given comment.
+		 * @param comment - An element with the "comment" class.
+		 * @return If the comment was collapsed.
+		 */
+		function collapseComment(comment) {
+			let changed = comment.classList.replace("noncollapsed","collapsed");
+			if (changed) comment.querySelector(".expand").textContent = "[+]";
+			return changed;
+		}
+
+		/**
+		 * Uncollapses the given comment.
+		 * @param comment - An element with the "comment" class.
+		 * @return If the comment was uncollapsed.
+		 */
+		function uncollapseComment(comment) {
+			let changed = comment.classList.replace("collapsed","noncollapsed");
+			if (changed) comment.querySelector(".expand").textContent = "[–]";
+			return changed;
+		}
+
 		// event callback to do the comment highlighting
 		function highlightNewComments(event) {
 			// Highlighting is applied to `.new-comment .usertext-body`,
@@ -195,9 +217,9 @@ const OLD_REDDIT = {
 
 			if (time && initComplete) hideReadComments(rootNode);
 			if (time == 0) { // uncollapse all comments and remove highlighting
-				let selector = (rootNode == document.body ? "" : ".clearleft + .clearleft ~ ") + ".collapsed > div > p > a.expand";
+				let selector = (rootNode == document.body ? "" : ".clearleft + .clearleft ~ ") + ".collapsed";
 				let collapsed = rootNode.querySelectorAll(selector);
-				for (let comment of collapsed) comment.click();
+				for (let comment of collapsed) uncollapseComment(comment);
 				let newComments = rootNode.querySelectorAll(".new-comment");
 				for (let comment of newComments) comment.classList.remove("new-comment");
 			}
@@ -295,9 +317,10 @@ const OLD_REDDIT = {
 				for (let comment of comments) {
 					// comment is collapsed
 					if (comment.classList.contains("collapsed")) {
-						if (rootNode == document.body) // and we aren't loading more comments
-							comment.querySelector(".expand").click(); // uncollapse it
-						else continue; // otherwise skip it
+						// and we aren't loading more comments
+						if (rootNode == document.body) {
+							uncollapseComment(comment);
+						} else continue; // otherwise skip it
 					}
 
 					// comment is new
@@ -323,7 +346,7 @@ const OLD_REDDIT = {
 					}
 
 					// otherwise
-					comment.querySelector(".expand").click(); // hide comment
+					collapseComment(comment);
 					++count;
 				}
 
