@@ -8,7 +8,7 @@
 // @grant         GM.getValue
 // @grant         GM.listValues
 // @grant         GM.deleteValue
-// @version       1.15.3
+// @version       1.15.4
 // ==/UserScript==
 
 "use strict";
@@ -249,6 +249,9 @@ const OLD_REDDIT = {
 					}
 				}
 			}
+
+			// The most recent comment time is updated in "highlightNewComment()".
+			updateMostRecentComment();
 
 			console.log("highlighted %i, uncollapsed %i, and collapsed %i comments", num_highlighted, num_uncollapsed, num_collapsed);
 		}
