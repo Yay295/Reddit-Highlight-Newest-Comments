@@ -8,7 +8,7 @@
 // @grant         GM.getValue
 // @grant         GM.listValues
 // @grant         GM.deleteValue
-// @version       1.15.2
+// @version       1.15.3
 // ==/UserScript==
 
 "use strict";
@@ -35,6 +35,18 @@ let addTask = (function() {
 	channel.port1.onmessage = evt => timeouts.length > 0 ? timeouts.shift()() : null;
 	return func => channel.port2.postMessage(timeouts.push(func));
 })();
+
+/**
+ * Sorts the given list of elements so that an element that is the child of
+ * another element in the list will be before its parent. Returns an array.
+ */
+function sortElementsChildrenFirst(elements) {
+	return Array.from(elements).sort((c1,c2) => {
+		if (c1 === c2) return 0;
+		// https://developer.mozilla.org/en-US/docs/Web/API/Node/compareDocumentPosition
+		return c1.compareDocumentPosition(c2) & Node.DOCUMENT_POSITION_FOLLOWING ? 1 : -1;
+	});
+}
 
 // converts the time difference to a nice string to use in the time selector
 function prettify(time) {
@@ -120,13 +132,42 @@ const OLD_REDDIT = {
 	},
 
 	init: function(times) {
-		let initComplete = false;
+		// MutationObserver
+		let mo = null;
 
-		// array of mutation observers
-		let observers = [];
+		/**
+		 * Highlights the given comment if it was posted/edited more recently than the given time.
+		 * Unhighlights the given comment if the given time is 0.
+		 * Does nothing if the given comment is deleted.
+		 * @return True if the comment is now highlighted.
+		 */
+		function highlightNewComment(comment,time) {
+			if (comment.classList.contains("deleted")) {
+				return false;
+			}
 
-		let moreCommentsButtons = document.getElementsByClassName("morecomments");
+			// we may have previously removed this class in "unhighlightComment()"
+			comment.querySelector(":scope > .entry > form > div").classList.add("usertext-body");
 
+			// the first element is the post time, the second element is the edit time
+			const time_elements = comment.children[2].getElementsByTagName("time");
+			const comment_time = Date.parse(time_elements[time_elements.length-1].dateTime);
+			if (comment_time > mostRecentTime) mostRecentTime = comment_time;
+			return comment.classList.toggle("new-comment", time !== 0 && comment_time > time);
+		}
+
+		function unhighlightCommentHandler(event) {
+			if (event.target.classList && event.target.classList.contains("usertext-body")) {
+				event.stopPropagation();
+				let comment = event.target.parentElement.parentElement.parentElement;
+				if (comment.classList.contains("comment")) {
+					comment.classList.remove("new-comment");
+					// If we don't remove "usertext-body" a "new-comment" parent comment
+					// will affect the styling of this comment.
+					event.target.classList.remove("usertext-body");
+				}
+			}
+		}
 
 		/**
 		 * Collapses the given comment.
@@ -150,83 +191,99 @@ const OLD_REDDIT = {
 			return changed;
 		}
 
-		// event callback to do the comment highlighting
-		function highlightNewComments(event) {
-			// Highlighting is applied to `.new-comment .usertext-body`,
-			// so one "new-comment" will affect all of its children.
+		/**
+		 * Gets the current score of the given comment element.
+		 */
+		function getCommentScore(comment) {
+			let score_element = comment.querySelectorAll(":scope > .entry.dislikes .score.dislikes, :scope > .entry.unvoted .score.unvoted, :scope > .entry.likes .score.likes");
+			return score_element ? parseInt(score_element.title,10) : 0;
+		}
 
-			function removeHighlighting(event) {
-				event.stopPropagation();
-				event.currentTarget.parentElement.parentElement.parentElement.classList.remove("new-comment");
-				event.currentTarget.classList.remove("usertext-body");
-				event.currentTarget.removeEventListener("click",removeHighlighting);
-			}
-
-			const rootNode = event.detail || document.body;
-			const time = parseInt(event.currentTarget.value,10);
-
-			if (time) {
-				console.log("highlighting comments from " + prettify(time));
-
-				let comments = Array.from(rootNode.getElementsByClassName("comment"));
-
-				// remove highlighting
-				for (let comment of comments) {
-					comment.classList.remove("new-comment");
-					let cc = comment.querySelector(":scope > .entry > form > div");
-					if (cc) cc.classList.add("usertext-body");
-				}
-
-				// add highlighting
-				for (let comment of comments) {
-					if (comment.classList.contains("deleted")) continue;
-
-					// the first element is the post time, the second element is the edit time
-					const timeElements = comment.children[2].getElementsByTagName("time");
-					const ctime = Date.parse(timeElements[timeElements.length-1].getAttribute("datetime"));
-					if (ctime > time) comment.classList.add("new-comment");
-					if (ctime > mostRecentTime) mostRecentTime = ctime;
-
-					comment.querySelector(":scope > .entry > form > div").addEventListener("click",removeHighlighting,{"passive":true});
-				}
-			} else {
-				// we need to check every comment because a comment can have an edit date more recent than its replies
-				let comments = Array.from(rootNode.getElementsByClassName("comment"));
-				for (let comment of comments) {
-					if (comment.classList.contains("deleted")) continue;
-
-					// the first element is the post time, the second element is the edit time
-					const timeElements = comment.children[2].getElementsByTagName("time");
-					const ctime = Date.parse(timeElements[timeElements.length-1].getAttribute("datetime"));
-					if (ctime > mostRecentTime) mostRecentTime = ctime;
-				}
-			}
-
-			updateMostRecentComment();
-
-			if (time || !initComplete) { // re-apply highlighting when more comments are loaded
-				for (let observer of observers) observer.disconnect();
-				observers = [];
-				for (let more of moreCommentsButtons) {
-					let container = more.parentElement.parentElement.parentElement;
-					let observer = new MutationObserver(mutations => document.getElementById("comment-visits").dispatchEvent(new CustomEvent("change",{detail:container})));
-					observer.observe(container,{childList:true});
-					observers.push(observer);
-				}
-			}
-
-			if (time && initComplete) hideReadComments(rootNode);
-			if (time == 0) { // uncollapse all comments and remove highlighting
-				let selector = (rootNode == document.body ? "" : ".clearleft + .clearleft ~ ") + ".collapsed";
-				let collapsed = rootNode.querySelectorAll(selector);
-				for (let comment of collapsed) uncollapseComment(comment);
-				let newComments = rootNode.querySelectorAll(".new-comment");
-				for (let comment of newComments) comment.classList.remove("new-comment");
+		/**
+		 * Mark the given comment element if it has better karma than its parent.
+		 */
+		function markBetterChild(child) {
+			let parent = child.parentElement.closest(".comment");
+			if (parent && getCommentScore(parent) < getCommentScore(child)) {
+				child.style.setProperty("border-left", betterChildStyle, "important");
 			}
 		}
 
-		// add selector to choose how long ago to highlight comments from (includes function to highlight comments)
+		/**
+		 * @param comments - A collection of comment elements to process.
+		 */
+		function processComments(comments) {
+			const time = parseInt(document.getElementById("comment-visits").value,10);
+
+			let num_highlighted = 0;
+			let num_uncollapsed = 0;
+			let num_collapsed = 0;
+
+			// Put the comments in a Set with replies before their parent so that we can process
+			// the comments from bottom to top, and we can add comments to the set without worrying
+			// about doing extra work processing them more times than necessary.
+			let comment_set = new Set(sortElementsChildrenFirst(comments));
+			for (let comment of comment_set) {
+				let comment_is_new = highlightNewComment(comment,time);
+				if (comment_is_new) ++num_highlighted;
+
+				let visibility_changed = false;
+				if (time === 0 || comment_is_new || comment.querySelector(".new-comment,.morecomments,.showreplies")) {
+					visibility_changed = uncollapseComment(comment);
+					if (visibility_changed) ++num_uncollapsed;
+				} else {
+					visibility_changed = collapseComment(comment);
+					if (visibility_changed) ++num_collapsed;
+				}
+
+				markBetterChild(comment);
+
+				// Remove this comment from the set so that - in case we somehow
+				// try to add it back in the future - it will be re-processed.
+				comment_set.delete(comment);
+				if (comment_is_new || visibility_changed) {
+					// Since we changed this comment, we now need to also check its parent, if it has one.
+					let parent = comment.parentElement.closest(".comment")
+					if (parent) {
+						comment_set.add(parent);
+					}
+				}
+			}
+
+			console.log("highlighted %i, uncollapsed %i, and collapsed %i comments", num_highlighted, num_uncollapsed, num_collapsed);
+		}
+
+		function mutationObserverCallback(mutations) {
+			for (let mutation of mutations) {
+				// If comments were added we can process them directly, but
+				// sometimes comments aren't added when clicking the button to
+				// load more comments, so in that case we should process the
+				// parent of the "load more comments" button.
+				let added_comments = Array.from(mutation.addedNodes).filter(node => node.classList && node.classList.contains("comment"));
+				if (added_comments.length > 0) {
+					processComments(added_comments);
+				} else {
+					let previous_parent = mutation.target;
+					// The topmost comment container is a "nestedlisting" instead of a "listing",
+					// so if the top level "load more comments" button is clicked and nothing loads,
+					// we won't reprocess every comment.
+					if (previous_parent.classList && previous_parent.classList.contains("listing")) {
+						let comments = previous_parent.parentElement.getElementsByClassName("comment");
+						processComments(comments);
+					}
+				}
+			}
+		}
+
+		/**
+		 * Adds a selector to choose how long ago to highlight comments from.
+		 * Replaces the existing selector if there is one.
+		 */
 		function addTimeSelector(times) {
+			// Remove the "comment-visits" box if it exists.
+			const cv = document.getElementById("comment-visits");
+			if (cv !== null) cv.parentElement.parentElement.remove();
+
 			let timeSelect = generateTimeSelector(times);
 				timeSelect.className = "rounded gold-accent comment-visits-box";
 
@@ -235,18 +292,21 @@ const OLD_REDDIT = {
 
 			let timeSelectSelect = timeSelectTitle.children[0];
 				timeSelectSelect.id = "comment-visits";
-				timeSelectSelect.addEventListener("change",highlightNewComments,{"passive":true});
+				timeSelectSelect.addEventListener(
+					"change",
+					event => processComments(document.getElementsByClassName("comment")),
+					{"passive":true}
+				);
 
 			let commentarea = document.getElementsByClassName("commentarea")[0];
 			let commentContainer = commentarea.querySelector(":scope > div.sitetable");
 			commentarea.insertBefore(timeSelect,commentContainer);
-
-			return timeSelectSelect;
 		}
 
 		function addLoadAllCommentsButton() {
 			let btn = document.createElement("button");
 
+			let moreCommentsButtons = document.getElementsByClassName("morecomments");
 			let wasLoading = false;
 			function callback() {
 				// These replies are just hidden using CSS, so we don't have
@@ -273,7 +333,11 @@ const OLD_REDDIT = {
 
 					wasLoading = isLoading;
 				} else {
+					mutationObserverCallback(mo.takeRecords());
+					mo.disconnect();
+					mo = null;
 					btn.remove();
+					btn = null;
 					alert("done loading all comments");
 				}
 			}
@@ -288,108 +352,30 @@ const OLD_REDDIT = {
 			commentarea.insertBefore(btn,commentContainer);
 		}
 
-		/**
-		 * Gets the current score of the given comment element.
-		 */
-		function getCommentScore(comment) {
-			let score_element = comment.querySelectorAll(":scope > .entry.dislikes .score.dislikes, :scope > .entry.unvoted .score.unvoted, :scope > .entry.likes .score.likes");
-			return score_element ? parseInt(score_element.title,10) : 0;
-		}
 
-		/**
-		 * Mark the given comment element if it has better karma than its parent.
-		 */
-		function markBetterChild(child) {
-			let parent = child.parentElement.closest(".comment");
-			if (parent && getCommentScore(parent) < getCommentScore(child)) {
-				child.style.setProperty("border-left", betterChildStyle, "important");
-			}
-		}
+		let comment_area = document.querySelector(".commentarea");
+		let has_hidden_comments = comment_area.querySelector(".morecomments,.showreplies") !== null;
 
-		// hides comments you've already seen that don't have any unread children
-		function hideReadComments(rootNode) {
-			console.log("hiding already-read comments");
+		// Add function to unhighlight comments when their body is clicked on.
+		comment_area.addEventListener("click",unhighlightCommentHandler,{"passive":true});
 
-			let count = 0;
-			// The root node is changed and added after everything else so that we
-			// don't accidentally grab comments that have been manually collapsed.
-			let comments = Array.from(rootNode.getElementsByClassName("comment")).reverse();
-			rootNode = rootNode.parentElement.closest(".comment") || rootNode;
-			if (rootNode.classList.contains("comment")) comments.push(rootNode);
-
-			while (true) {
-				for (let comment of comments) {
-					// comment is collapsed
-					if (comment.classList.contains("collapsed")) {
-						// and we aren't loading more comments
-						if (rootNode == document.body) {
-							uncollapseComment(comment);
-						} else continue; // otherwise skip it
-					}
-
-					// comment is new
-					if (comment.classList.contains("new-comment")) continue;
-
-					// comment has a new reply (not necessarily a direct reply) that is not collapsed
-					let newReply = comment.querySelector(".comment.new-comment:not(.collapsed)");
-					if (newReply) {
-						// if this is a direct reply
-						if (newReply.parentElement.closest(".comment") == comment) continue;
-
-						// otherwise check all of the comments between the comment and the reply to see if they are collapsed
-						do { newReply = newReply.parentElement.closest(".comment");
-						} while (newReply != comment && !newReply.classList.contains("collapsed"));
-
-						// if none of them were collapsed
-						if (newReply == comment) continue;
-					}
-
-					// comment has replies (not necessarily direct replies) hidden under a "load more comments" link
-					if (comment.querySelector(".morecomments") || document.querySelector(".showreplies")) {
-						continue;
-					}
-
-					// otherwise
-					collapseComment(comment);
-					++count;
-				}
-
-				// if we collapsed everything, check the parent comment
-				if (rootNode.classList.contains("collapsed")) {
-					rootNode = rootNode.parentElement.closest(".comment");
-					if (rootNode) comments = [rootNode];
-					else break;
-				} else break;
-			}
-
-			console.log(count + " comments collapsed");
-		}
-
-
-		// Remove the "comment-visits" box if it exists.
-		const cv = document.getElementById("comment-visits");
-		if (cv !== null) cv.parentElement.parentElement.remove();
 		// The last time is now, so we don't want to show that in the selector.
 		let selector_times = times.toReversed().slice(1);
 		// Add the "no highlighting" time.
 		selector_times.push(0);
-		// Create a new "comment-visits" box and trigger the selector.
-		addTimeSelector(selector_times).dispatchEvent(new Event("change"));
+		// Create a new "comment-visits" box.
+		addTimeSelector(selector_times);
 
-		if (moreCommentsButtons.length || document.querySelector(".showreplies")) {
+		if (has_hidden_comments) {
 			addLoadAllCommentsButton();
 		}
 
-		let comments = document.getElementsByClassName("comment");
-		for (let comment of comments) markBetterChild(comment);
+		processComments(comment_area.getElementsByClassName("comment"));
 
-		// If there's only one time in the list this is our first
-		// time visiting this page, so there's nothing to hide.
-		if (times.length > 1) {
-			hideReadComments(document.body);
+		if (has_hidden_comments) {
+			mo = new MutationObserver(mutationObserverCallback);
+			mo.observe(comment_area,{subtree:true,childList:true});
 		}
-
-		initComplete = true;
 	}
 };
 
@@ -533,12 +519,7 @@ const NEW_NEW_REDDIT = {
 					}
 				}
 			} else {
-				// Sort comments based on their position in the DOM, with replies before their parent.
-				let sorted_comments = Array.from(comments).sort((c1,c2) => {
-					if (c1 === c2) return 0;
-					// https://developer.mozilla.org/en-US/docs/Web/API/Node/compareDocumentPosition
-					return c1.compareDocumentPosition(c2) & Node.DOCUMENT_POSITION_FOLLOWING ? 1 : -1;
-				});
+				let sorted_comments = sortElementsChildrenFirst(comments);
 				// Use a Set so that if we add more comments, we won't add one that's already in the list.
 				let comment_set = new Set(sorted_comments);
 				for (let comment of comment_set) {
