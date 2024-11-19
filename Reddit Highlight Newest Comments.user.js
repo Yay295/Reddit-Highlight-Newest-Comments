@@ -157,14 +157,14 @@ const OLD_REDDIT = {
 		}
 
 		function unhighlightCommentHandler(event) {
-			if (event.target.classList && event.target.classList.contains("usertext-body")) {
-				event.stopPropagation();
-				let comment = event.target.parentElement.parentElement.parentElement;
+			let comment_body = event.target.closest(".usertext-body");
+			if (comment_body) {
+				let comment = comment_body.parentElement.parentElement.parentElement;
 				if (comment.classList.contains("comment")) {
 					comment.classList.remove("new-comment");
 					// If we don't remove "usertext-body" a "new-comment" parent comment
 					// will affect the styling of this comment.
-					event.target.classList.remove("usertext-body");
+					comment_body.classList.remove("usertext-body");
 				}
 			}
 		}
