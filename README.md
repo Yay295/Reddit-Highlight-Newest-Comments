@@ -4,15 +4,15 @@ it's done. This script does not follow "continue this thread" links since those 
 if you follow one of those links yourself (or go to a comment permalink), this script will recognize comments on that
 page.
 
-This script works on Old Reddit and New New Reddit, but not New Reddit.  
-There is an issue on New New Reddit where sometimes the button to load more replies doesn't actually load any replies,
-which means the code to auto-collapse old comments doesn't get triggered.
+This script works on Old Reddit and New New Reddit, but not New Reddit.
 
 [Install/Update](https://raw.githubusercontent.com/Yay295/Reddit-Highlight-Newest-Comments/refs/heads/main/Reddit%20Highlight%20Newest%20Comments.user.js)
 
 Based on https://greasyfork.org/en/scripts/1868-reddit-highlight-newest-comments v1.5.7 by [JonnyRobbie](https://github.com/jonnyrobbie).
 
 ## Changelog
+- 1.15.5
+  - Fixed processing changes when the button to load more replies doesn't load more replies on New New Reddit.
 - 1.15.4
   - Re-add code to show the most recent comment post/edit time on Old Reddit.
 - 1.15.3
@@ -132,4 +132,4 @@ Based on https://greasyfork.org/en/scripts/1868-reddit-highlight-newest-comments
 
 ## Notes
 
-1. On Old Reddit the links/buttons to load more replies use the text "load more comments" or "[show replies]". On New Reddit and New New Reddit they use the text "# more replies".
+1. On Old Reddit the links/buttons to load more replies use the text "load more comments" or "[show replies]". On New Reddit and New New Reddit they use the text "# more replies" or "View more comments".

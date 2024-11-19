@@ -8,7 +8,7 @@
 // @grant         GM.getValue
 // @grant         GM.listValues
 // @grant         GM.deleteValue
-// @version       1.15.4
+// @version       1.15.5
 // ==/UserScript==
 
 "use strict";
@@ -640,8 +640,8 @@ const NEW_NEW_REDDIT = {
 		// No comment data is in the initial page HTML.
 		const main_content = document.getElementById("main-content");
 		new MutationObserver(mutations => {
-			let all_added_comments = new Set();
 			for (let mutation of mutations) {
+				let all_added_comments = new Set();
 				for (let node of mutation.addedNodes) {
 					if (node.tagName === "SHREDDIT-COMMENT") {
 						all_added_comments.add(node);
@@ -651,9 +651,15 @@ const NEW_NEW_REDDIT = {
 						}
 					}
 				}
-			}
-			if (all_added_comments.size > 0) {
-				processChanges(Array.from(all_added_comments));
+				// If comments were added we can process them directly, but
+				// sometimes comments aren't added when clicking the button to
+				// load more replies, so in that case we should process the
+				// parent of the "# more replies" button.
+				if (all_added_comments.size > 0) {
+					processChanges(Array.from(all_added_comments));
+				} else if (mutation.target.tagName === "SHREDDIT-COMMENT") {
+					processChanges(mutation.target.parentElement.querySelectorAll("shreddit-comment"));
+				}
 			}
 		}).observe(main_content,{subtree:true,childList:true});
 
