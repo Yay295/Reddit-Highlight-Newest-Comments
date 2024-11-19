@@ -288,23 +288,22 @@ const OLD_REDDIT = {
 			commentarea.insertBefore(btn,commentContainer);
 		}
 
-		// highlight child comment if it has better karma than its parent
-		function highlightBetterChild(comment) {
-			let scoreTag = comment.getElementsByClassName("tagline")[0].getElementsByClassName("unvoted");
-			let scorechild = scoreTag.length ? parseInt(scoreTag[0].innerHTML) : 0;
-			scoreTag = comment.parentNode.parentNode.parentNode.getElementsByClassName("tagline")[0].getElementsByClassName("unvoted");
-			let scoreparent = scoreTag.length ? parseInt(scoreTag[0].innerHTML) : 0;
+		/**
+		 * Gets the current score of the given comment element.
+		 */
+		function getCommentScore(comment) {
+			let score_element = comment.querySelectorAll(":scope > .entry.dislikes .score.dislikes, :scope > .entry.unvoted .score.unvoted, :scope > .entry.likes .score.likes");
+			return score_element ? parseInt(score_element.title,10) : 0;
+		}
 
-			let voted = comment.getElementsByClassName("midcol")[0].className;
-			if (voted == "midcol likes") ++scorechild;
-			else if (voted == "midcol dislikes") --scorechild;
-
-			voted = comment.parentNode.parentNode.parentNode.getElementsByClassName("midcol")[0].className;
-			if (voted == "midcol likes") ++scoreparent;
-			else if (voted == "midcol dislikes") --scoreparent;
-
-			if (scoreparent < scorechild && comment.parentNode.parentNode.parentNode.className != "content")
-				comment.style.setProperty("border-left", betterChildStyle, "important");
+		/**
+		 * Mark the given comment element if it has better karma than its parent.
+		 */
+		function markBetterChild(child) {
+			let parent = child.parentElement.closest(".comment");
+			if (parent && getCommentScore(parent) < getCommentScore(child)) {
+				child.style.setProperty("border-left", betterChildStyle, "important");
+			}
 		}
 
 		// hides comments you've already seen that don't have any unread children
@@ -382,7 +381,7 @@ const OLD_REDDIT = {
 		}
 
 		let comments = document.getElementsByClassName("comment");
-		for (let comment of comments) highlightBetterChild(comment);
+		for (let comment of comments) markBetterChild(comment);
 
 		// If there's only one time in the list this is our first
 		// time visiting this page, so there's nothing to hide.
