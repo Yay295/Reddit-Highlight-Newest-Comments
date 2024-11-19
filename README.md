@@ -13,6 +13,7 @@ Based on https://greasyfork.org/en/scripts/1868-reddit-highlight-newest-comments
 ## Changelog
 - 1.15.5
   - Fixed processing changes when the button to load more replies doesn't load more replies on New New Reddit.
+  - Fixed getting the time of new replies on New New Reddit.
 - 1.15.4
   - Re-add code to show the most recent comment post/edit time on Old Reddit.
 - 1.15.3
@@ -132,4 +133,6 @@ Based on https://greasyfork.org/en/scripts/1868-reddit-highlight-newest-comments
 
 ## Notes
 
-1. On Old Reddit the links/buttons to load more replies use the text "load more comments" or "[show replies]". On New Reddit and New New Reddit they use the text "# more replies" or "View more comments".
+1. On Old Reddit the links/buttons to load more replies use the text "load more comments" or "[show replies]".
+   On New Reddit and New New Reddit they use the text "# more replies" or "View more comments".
+   New New Reddit also has "# more replies" *links*. They look exactly like the buttons, but they're actually permalinks that open the replies as a new page.

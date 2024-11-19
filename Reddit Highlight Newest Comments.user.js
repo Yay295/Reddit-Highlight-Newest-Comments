@@ -476,8 +476,9 @@ const NEW_NEW_REDDIT = {
 		 */
 		function getCommentTime(comment) {
 			// There might be more than one if the comment has been edited.
-			let times = comment.querySelectorAll(':scope > div[slot=commentMeta] time');
-			return Math.max(...Array.from(times).map(e => Date.parse(e.dateTime)));
+			// The <time> elements appear to be created dynamically, so we have to parse the <faceplate-timeago> elements instead.
+			let times = comment.querySelectorAll(':scope > div[slot=commentMeta] faceplate-timeago');
+			return Math.max(...Array.from(times).map(e => Date.parse(e.getAttribute("ts"))));
 		}
 
 		/**
