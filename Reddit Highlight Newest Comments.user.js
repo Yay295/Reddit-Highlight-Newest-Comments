@@ -8,7 +8,7 @@
 // @grant         GM.getValue
 // @grant         GM.listValues
 // @grant         GM.deleteValue
-// @version       1.15.5
+// @version       1.15.6
 // ==/UserScript==
 
 "use strict";
@@ -459,8 +459,7 @@ const NEW_NEW_REDDIT = {
 		if (comment_tree_element === null) {
 			return null;
 		}
-		// TODO This doesn't work on comment permalink pages.
-		const post_id = comment_tree_element.getAttribute("post-id").split("_")[1];
+		const post_id = document.querySelector("shreddit-post").id.split("_")[1];
 		let comment_id = null;
 		if (comment_tree_element.hasAttribute("thingid")) {
 			comment_id = comment_tree_element.getAttribute("thingid").split("_")[1];

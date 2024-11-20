@@ -11,6 +11,8 @@ This script works on Old Reddit and New New Reddit, but not New Reddit.
 Based on https://greasyfork.org/en/scripts/1868-reddit-highlight-newest-comments v1.5.7 by [JonnyRobbie](https://github.com/jonnyrobbie).
 
 ## Changelog
+- 1.15.6
+  - Fixed getting the post ID for comment permalink pages on New New Reddit.
 - 1.15.5
   - Fixed processing changes when the button to load more replies doesn't load more replies on New New Reddit.
   - Fixed getting the time of new replies on New New Reddit.
