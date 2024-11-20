@@ -8,7 +8,7 @@
 // @grant         GM.getValue
 // @grant         GM.listValues
 // @grant         GM.deleteValue
-// @version       1.15.6
+// @version       1.15.7
 // ==/UserScript==
 
 "use strict";
@@ -27,6 +27,7 @@ const timeZoneOffset = new Date().getTimezoneOffset() * 60000;
 
 // most recent comment time
 let mostRecentTime = 0;
+const mostRecentSpan = document.createElement("span");
 
 
 // adds a task while avoiding the 4ms delay from setTimeout
@@ -94,11 +95,8 @@ function generateTimeSelector(times) {
 
 	timeSelectTitle.appendChild(timeSelectSelect);
 
-	let timeSelectMostRecent = document.createElement("span");
-		timeSelectMostRecent.id = "most-recent-comment";
-
 	timeSelect.appendChild(timeSelectTitle);
-	timeSelect.appendChild(timeSelectMostRecent);
+	timeSelect.appendChild(mostRecentSpan);
 
 	return timeSelect;
 }
@@ -107,15 +105,12 @@ function generateTimeSelector(times) {
  * Updates the most recent comment note in the time selector element based on the "mostRecentTime" global variable.
  */
 function updateMostRecentComment() {
-	let mostRecentSpan = document.getElementById("most-recent-comment");
-	if (mostRecentSpan) {
-		if (mostRecentTime === 0) {
-			mostRecentSpan.innerText = "";
-		} else {
-			let timestring = prettify(mostRecentTime).replace(/(.*),/,"$1, and").replace(/^([^,]*),( and[^,]*)$/,"$1$2");
-			let timestamp = new Date(mostRecentTime-timeZoneOffset).toISOString().replace("T"," ").replace(/\..+/,"");
-			mostRecentSpan.innerText = "The most recent comment was made/edited " + timestring + " at " + timestamp + ".";
-		}
+	if (mostRecentTime === 0) {
+		mostRecentSpan.innerText = "";
+	} else {
+		let timestring = prettify(mostRecentTime).replace(/(.*),/,"$1, and").replace(/^([^,]*),( and[^,]*)$/,"$1$2");
+		let timestamp = new Date(mostRecentTime-timeZoneOffset).toISOString().replace("T"," ").replace(/\..+/,"");
+		mostRecentSpan.innerText = "The most recent comment was made/edited " + timestring + " at " + timestamp + ".";
 	}
 }
 
@@ -660,7 +655,7 @@ const NEW_NEW_REDDIT = {
 		 * @param comments - The list of <shreddit-comment> elements to process.
 		 */
 		function processChanges(comments) {
-			let comment_body_header = main_content.querySelector("comment-body-header");
+			let comment_body_header = main_content.querySelector("comment-body-header") || main_content.querySelector("shreddit-comments-page-tools").shadowRoot.firstElementChild;
 			if (comment_body_header) {
 				// Add the time selector to the page.
 				if (!comment_body_header.contains(time_selector_container)) {
