@@ -11,6 +11,9 @@ This script works on Old Reddit and New New Reddit, but not New Reddit.
 Based on https://greasyfork.org/en/scripts/1868-reddit-highlight-newest-comments v1.5.7 by [JonnyRobbie](https://github.com/jonnyrobbie).
 
 ## Changelog
+- 1.15.8
+  - Faster loading all comments on Old Reddit.
+  - Fixed loading comments more than once on Old Reddit.
 - 1.15.7
   - Fixed the most recent comment time note on New New Reddit.
 - 1.15.6

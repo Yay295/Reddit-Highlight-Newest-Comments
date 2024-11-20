@@ -8,7 +8,7 @@
 // @grant         GM.getValue
 // @grant         GM.listValues
 // @grant         GM.deleteValue
-// @version       1.15.7
+// @version       1.15.8
 // ==/UserScript==
 
 "use strict";
@@ -29,13 +29,6 @@ const timeZoneOffset = new Date().getTimezoneOffset() * 60000;
 let mostRecentTime = 0;
 const mostRecentSpan = document.createElement("span");
 
-
-// adds a task while avoiding the 4ms delay from setTimeout
-let addTask = (function() {
-	let timeouts = [], channel = new MessageChannel();
-	channel.port1.onmessage = evt => timeouts.length > 0 ? timeouts.shift()() : null;
-	return func => channel.port2.postMessage(timeouts.push(func));
-})();
 
 /**
  * Sorts the given list of elements so that an element that is the child of
@@ -344,7 +337,7 @@ const OLD_REDDIT = {
 					{"passive":true}
 				);
 
-			let commentarea = document.getElementsByClassName("commentarea")[0];
+			let commentarea = document.querySelector(".commentarea");
 			let commentContainer = commentarea.querySelector(":scope > div.sitetable");
 			commentarea.insertBefore(timeSelect,commentContainer);
 		}
@@ -352,8 +345,6 @@ const OLD_REDDIT = {
 		function addLoadAllCommentsButton() {
 			let btn = document.createElement("button");
 
-			let moreCommentsButtons = document.getElementsByClassName("morecomments");
-			let wasLoading = false;
 			function callback() {
 				// These replies are just hidden using CSS, so we don't have
 				// to wait for them to be downloaded from the server.
@@ -367,17 +358,19 @@ const OLD_REDDIT = {
 					}
 				}
 
-				if (moreCommentsButtons.length) {
-					let isLoading = moreCommentsButtons[0].textContent == "loading...";
-
-					if (!isLoading || wasLoading)
-						moreCommentsButtons[0].firstElementChild.click();
-
-					if (isLoading && wasLoading)
-						setTimeout(callback,500);
-					else addTask(callback);
-
-					wasLoading = isLoading;
+				// Loading more comments can add a new morecomments link, so we need to wait
+				// for all of them to be gone, even the ones that are currently loading.
+				if (document.querySelector(".morecomments")) {
+					let moreCommentsButton = document.querySelector(".morecomments:not(.loading)");
+					if (moreCommentsButton) {
+						// Add a class so we can skip this one next time.
+						moreCommentsButton.classList.add("loading");
+						// calls https://github.com/reddit-archive/reddit/blob/master/r2/r2/public/static/js/reddit.js#L464-L478
+						moreCommentsButton.firstElementChild.click();
+					}
+					// The default Old Reddit rate limit is 333ms, so we have to do them one at a time.
+					// https://github.com/reddit-archive/reddit/blob/master/r2/r2/public/static/js/jquery.reddit.js#L254-L279
+					setTimeout(callback,334);
 				} else {
 					mutationObserverCallback(mo.takeRecords());
 					mo.disconnect();
@@ -393,7 +386,7 @@ const OLD_REDDIT = {
 			btn.style.padding = "7px 10px 7px 7px";
 			btn.addEventListener("click",callback,{"passive":true});
 
-			let commentarea = document.getElementsByClassName("commentarea")[0];
+			let commentarea = document.querySelector(".commentarea");
 			let commentContainer = commentarea.querySelector(":scope > div.sitetable");
 			commentarea.insertBefore(btn,commentContainer);
 		}
