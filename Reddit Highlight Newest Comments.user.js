@@ -210,25 +210,50 @@ const OLD_REDDIT = {
 		}
 
 		/**
-		 * @param comments - A collection of comment elements to process.
+		 * @return True if the given comment has replies that are new or not yet loaded,
+		 *         and the replies have not been collapsed.
 		 */
-		function processComments(comments) {
+		function commentHasNewRepliesNotHidden(comment) {
+			let potential_unhidden_replies = comment.querySelectorAll(".new-comment.noncollapsed,.morecomments,.showreplies");
+			for (let to_check of potential_unhidden_replies) {
+				// get the closest comment; possibly this same element
+				to_check = to_check.closest(".comment");
+				// "to_check" is a direct descendant of "comment"
+				if (to_check === comment) {
+					return true;
+				}
+				// look for a comment that is collapsed
+				while (to_check !== comment && !to_check.classList.contains("collapsed")) {
+					to_check = to_check.parentElement.closest(".comment");
+				}
+				// none of the comments are collapsed
+				if (to_check === comment) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		/**
+		 * @param comments - A collection of comment elements to process.
+		 * @param parents - A collection of comment elements to process for collapsing/uncollapsing only.
+		 */
+		function processComments(comments,parents=[]) {
 			const time = parseInt(document.getElementById("comment-visits").value,10);
 
 			let num_highlighted = 0;
 			let num_uncollapsed = 0;
 			let num_collapsed = 0;
 
-			// Put the comments in a Set with replies before their parent so that we can process
-			// the comments from bottom to top, and we can add comments to the set without worrying
-			// about doing extra work processing them more times than necessary.
-			let comment_set = new Set(sortElementsChildrenFirst(comments));
-			for (let comment of comment_set) {
+			let sorted_comments = sortElementsChildrenFirst(comments);
+			let parent_comments = new Set(parents);
+
+			for (let comment of sorted_comments) {
 				let comment_is_new = highlightNewComment(comment,time);
 				if (comment_is_new) ++num_highlighted;
 
 				let visibility_changed = false;
-				if (time === 0 || comment_is_new || comment.querySelector(".new-comment,.morecomments,.showreplies")) {
+				if (time === 0 || comment_is_new || commentHasNewRepliesNotHidden(comment)) {
 					visibility_changed = uncollapseComment(comment);
 					if (visibility_changed) ++num_uncollapsed;
 				} else {
@@ -238,14 +263,36 @@ const OLD_REDDIT = {
 
 				markBetterChild(comment);
 
-				// Remove this comment from the set so that - in case we somehow
-				// try to add it back in the future - it will be re-processed.
-				comment_set.delete(comment);
 				if (comment_is_new || visibility_changed) {
 					// Since we changed this comment, we now need to also check its parent, if it has one.
 					let parent = comment.parentElement.closest(".comment")
 					if (parent) {
-						comment_set.add(parent);
+						parent_comments.add(parent);
+					}
+				}
+			}
+
+			// For the parent comments we only need to check if they should be collapsed;
+			// they should not have their highlighting changed.
+			parent_comments = new Set(sortElementsChildrenFirst(parent_comments));
+			for (let comment of parent_comments) {
+				let visibility_changed = false;
+				if (commentHasNewRepliesNotHidden(comment)) {
+					visibility_changed = uncollapseComment(comment);
+					if (visibility_changed) ++num_uncollapsed;
+				} else if (time !== 0 && !comment.classList.contains("new-comment")) {
+					visibility_changed = collapseComment(comment);
+					if (visibility_changed) ++num_collapsed;
+				}
+
+				// Remove this comment from the set so that - in case we somehow
+				// try to add it back in the future - it will be re-processed.
+				parent_comments.delete(comment);
+				if (visibility_changed) {
+					// Since we changed this comment, we now need to also check its parent, if it has one.
+					let parent = comment.parentElement.closest(".comment")
+					if (parent) {
+						parent_comments.add(parent);
 					}
 				}
 			}
@@ -262,17 +309,18 @@ const OLD_REDDIT = {
 				// sometimes comments aren't added when clicking the button to
 				// load more comments, so in that case we should process the
 				// parent of the "load more comments" button.
-				let added_comments = Array.from(mutation.addedNodes).filter(node => node.classList && node.classList.contains("comment"));
+				let added_comments = Array.from(mutation.addedNodes).filter(node => node.classList && node.classList.contains("comment"))
 				if (added_comments.length > 0) {
 					processComments(added_comments);
-				} else {
-					let previous_parent = mutation.target;
-					// The topmost comment container is a "nestedlisting" instead of a "listing",
-					// so if the top level "load more comments" button is clicked and nothing loads,
-					// we won't reprocess every comment.
-					if (previous_parent.classList && previous_parent.classList.contains("listing")) {
-						let comments = previous_parent.parentElement.getElementsByClassName("comment");
-						processComments(comments);
+				} else if (
+					// a "load more comments" button was removed
+					Array.from(mutation.removedNodes).some(node => node.classList && node.classList.contains("morechildren"))
+					&& mutation.target.classList
+					&& mutation.target.classList.contains("listing")
+				) {
+					let parent_comment = mutation.target.parentElement.parentElement;
+					if (parent_comment.classList.contains("comment")) {
+						processComments([],[parent_comment]);
 					}
 				}
 			}
@@ -411,6 +459,7 @@ const NEW_NEW_REDDIT = {
 		if (comment_tree_element === null) {
 			return null;
 		}
+		// TODO This doesn't work on comment permalink pages.
 		const post_id = comment_tree_element.getAttribute("post-id").split("_")[1];
 		let comment_id = null;
 		if (comment_tree_element.hasAttribute("thingid")) {
@@ -657,9 +706,15 @@ const NEW_NEW_REDDIT = {
 				// load more replies, so in that case we should process the
 				// parent of the "# more replies" button.
 				if (all_added_comments.size > 0) {
-					processChanges(Array.from(all_added_comments));
+					let all_added_comments_array = Array.from(all_added_comments);
+					// Make sure all newly added comments start uncollapsed.
+					// For some reason some load collapsed, but they're new, or have hidden replies,
+					// so their parent doesn't get auto-collapsed, which can be confusing.
+					for (let comment of all_added_comments_array) comment.removeAttribute("collapsed");
+					processChanges(all_added_comments_array);
 				} else if (mutation.target.tagName === "SHREDDIT-COMMENT") {
-					processChanges(mutation.target.parentElement.querySelectorAll("shreddit-comment"));
+					// We only want to possibly collapse/uncollapse this comment, not change anything else about it.
+					hideOldComments([mutation.target]);
 				}
 			}
 		}).observe(main_content,{subtree:true,childList:true});

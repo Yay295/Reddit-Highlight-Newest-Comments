@@ -15,6 +15,7 @@ Based on https://greasyfork.org/en/scripts/1868-reddit-highlight-newest-comments
   - Fixed processing changes when the button to load more replies doesn't load more replies on New New Reddit.
   - Fixed getting the time of new replies on New New Reddit.
   - Fixed unhighlighting comments on Old Reddit.
+  - Fixed unrelated comments being changed when loading more replies.
 - 1.15.4
   - Re-add code to show the most recent comment post/edit time on Old Reddit.
 - 1.15.3
