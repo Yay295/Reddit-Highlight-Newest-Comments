@@ -8,7 +8,7 @@
 // @grant         GM.getValue
 // @grant         GM.listValues
 // @grant         GM.deleteValue
-// @version       1.15.8
+// @version       1.15.9
 // ==/UserScript==
 
 "use strict";
@@ -418,25 +418,6 @@ const OLD_REDDIT = {
 	}
 };
 
-const NEW_REDDIT = {
-	getThreadID: function() {
-		const post_element = document.querySelector('div[id^="t3_"][tabindex]');
-		const post_id = post_element.id.split("_")[1];
-		let comment_id = null;
-		if (Array.from(post_element.parentElement.querySelectorAll(":scope > div > div > a")).find(x => x.innerText === "Show parent comments")) {
-			comment_id = document.querySelector('div[data-scroller-first] div[id^="t1_"][tabindex]').id.split("_")[1];
-		}
-		return "redd_id_" + post_id + (comment_id ? "_" + comment_id : "");
-	},
-
-	init: function(times) {
-		// TODO
-		// New Reddit does support highlighting new comments natively, but it's very limited compared to what this script does for Old Reddit.
-		// New Reddit does not appear to auto-collapse replies on "contest mode" posts.
-	}
-}
-// TODO Detect SPA navigations on New Reddit.
-
 const NEW_NEW_REDDIT = {
 	APP_ELEMENT: document.querySelector("shreddit-app"),
 	APP_ELEMENT_MUTATION_OBSERVER: null,
@@ -738,10 +719,6 @@ async function init() {
 		if (document.querySelector("body.comments-page") !== null) {
 			console.log("detected old reddit comment page");
 			reddit = OLD_REDDIT;
-		} else if (document.querySelector('div[id^="t1_"][tabindex]') !== null) {
-			console.log("detected new reddit comment page");
-			reddit = NEW_REDDIT;
-			now = Date.now();
 		} else if (document.querySelector("shreddit-comment-tree") !== null) {
 			console.log("detected new new reddit comment page");
 			reddit = NEW_NEW_REDDIT;
@@ -770,11 +747,6 @@ async function init() {
 			}
 			localStorage.removeItem(key);
 		}
-	}
-
-	if (reddit === NEW_REDDIT) {
-		console.log("support for new reddit not yet added");
-		return;
 	}
 
 	// Update the stored values for the current thread and get the previous value.
