@@ -8,7 +8,7 @@
 // @grant         GM.getValue
 // @grant         GM.listValues
 // @grant         GM.deleteValue
-// @version       1.15.9
+// @version       1.15.10
 // ==/UserScript==
 
 "use strict";
@@ -26,7 +26,9 @@ const oneWeek = 7 * oneDay;
 const timeZoneOffset = new Date().getTimezoneOffset() * 60000;
 
 // most recent comment time
-let mostRecentTime = 0;
+const mostRecentTime = document.createElement("time");
+	mostRecentTime.classList.add("live-timestamp");
+	mostRecentTime.timestamp = 0;
 const mostRecentSpan = document.createElement("span");
 
 
@@ -44,7 +46,7 @@ function sortElementsChildrenFirst(elements) {
 
 // converts the time difference to a nice string to use in the time selector
 function prettify(time) {
-	if (time == 0) return "no highlighting";
+	if (time === 0) return "no highlighting";
 
 	let timeString = "", difference = Date.now() - time;
 
@@ -81,8 +83,9 @@ function generateTimeSelector(times) {
 
 	for (let time of times) {
 		let option = document.createElement("option");
+			option.classList.toggle("live-timestamp", time !== 0);
+			option.innerText = prettify(time);
 			option.value = time;
-			option.innerHTML = prettify(time);
 		timeSelectSelect.appendChild(option);
 	}
 
@@ -98,12 +101,13 @@ function generateTimeSelector(times) {
  * Updates the most recent comment note in the time selector element based on the "mostRecentTime" global variable.
  */
 function updateMostRecentComment() {
-	if (mostRecentTime === 0) {
+	if (mostRecentTime.timestamp === 0) {
 		mostRecentSpan.innerText = "";
 	} else {
-		let timestring = prettify(mostRecentTime).replace(/(.*),/,"$1, and").replace(/^([^,]*),( and[^,]*)$/,"$1$2");
-		let timestamp = new Date(mostRecentTime-timeZoneOffset).toISOString().replace("T"," ").replace(/\..+/,"");
-		mostRecentSpan.innerText = "The most recent comment was made/edited " + timestring + " at " + timestamp + ".";
+		let datetime = new Date(mostRecentTime.timestamp-timeZoneOffset).toISOString().replace("T"," ").replace(/\..+/,"");
+		mostRecentTime.dateTime = datetime;
+		mostRecentTime.innerText = prettify(mostRecentTime.timestamp);
+		mostRecentSpan.replaceChildren("The most recent comment was made/edited ", mostRecentTime, " at " + datetime + ".");
 	}
 }
 
@@ -140,7 +144,7 @@ const OLD_REDDIT = {
 			// the first element is the post time, the second element is the edit time
 			const time_elements = comment.children[2].getElementsByTagName("time");
 			const comment_time = Date.parse(time_elements[time_elements.length-1].dateTime);
-			if (comment_time > mostRecentTime) mostRecentTime = comment_time;
+			if (comment_time > mostRecentTime.timestamp) mostRecentTime.timestamp = comment_time;
 			return comment.classList.toggle("new-comment", time !== 0 && comment_time > time);
 		}
 
@@ -510,7 +514,7 @@ const NEW_NEW_REDDIT = {
 					unhighlightComment(comment);
 				}
 			} else {
-				console.log("highlighting " + comments.length + " comments from " + prettify(time));
+				console.log("highlighting " + comments.length + " comments from " + time_selector_selector.selectedOptions[0].innerText);
 				for (let comment of comments) {
 					let comment_time = getCommentTime(comment);
 					if (comment_time >= time) {
@@ -644,8 +648,8 @@ const NEW_NEW_REDDIT = {
 			for (let comment of comments) {
 				linkCommentToCommentBody(comment);
 				let comment_time = getCommentTime(comment);
-				if (comment_time > mostRecentTime) {
-					mostRecentTime = comment_time;
+				if (comment_time > mostRecentTime.timestamp) {
+					mostRecentTime.timestamp = comment_time;
 				}
 			}
 			updateMostRecentComment();
@@ -779,5 +783,13 @@ async function init() {
 	else console.log(num_purged + " entries older than " + expiration + "ms have been removed");
 
 	reddit.init(times);
+
+	// Update the datetime displays twice a minute.
+	setInterval(() => {
+		for (let option of document.querySelectorAll("option.live-timestamp")) {
+			option.innerText = prettify(option.value);
+		}
+		mostRecentTime.innerText = prettify(mostRecentTime.timestamp);
+	}, oneMinute / 2);
 }
 init().catch(error => console.error(error));
